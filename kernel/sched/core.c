@@ -98,10 +98,6 @@
 #include <soc/sprd/sec_debug.h>
 #endif
 
-#if defined(CONFIG_SEC_LOG64)
-#include <soc/sprd/sec_log64.h>
-#endif
-
 ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 
 void start_bandwidth_timer(struct hrtimer *period_timer, ktime_t period)
