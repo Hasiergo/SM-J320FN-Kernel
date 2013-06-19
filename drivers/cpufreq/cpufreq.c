@@ -49,7 +49,7 @@ static DEFINE_PER_CPU(struct cpufreq_policy *, cpufreq_cpu_data);
 static DEFINE_PER_CPU(char[CPUFREQ_NAME_LEN], cpufreq_cpu_governor);
 #endif
 static DEFINE_RWLOCK(cpufreq_driver_lock);
-DEFINE_MUTEX(cpufreq_governor_lock);
+static DEFINE_MUTEX(cpufreq_governor_lock);
 
 /*
  * cpu_policy_rwsem is a per CPU reader-writer semaphore designed to cure
@@ -1636,36 +1636,17 @@ static int __cpufreq_governor(struct cpufreq_policy *policy,
 	pr_debug("__cpufreq_governor for CPU %u, event %u\n",
 						policy->cpu, event);
 
-try_again:
 	mutex_lock(&cpufreq_governor_lock);
-
-	state = policy->governor_state;
-
-	/* Check if operation is permitted or not */
-	if ((state == CPUFREQ_GOV_START && event != CPUFREQ_GOV_LIMITS && event != CPUFREQ_GOV_STOP)
-	    || (state == CPUFREQ_GOV_STOP && event != CPUFREQ_GOV_START && event != CPUFREQ_GOV_POLICY_EXIT)
-	    || (state == CPUFREQ_GOV_POLICY_INIT && event != CPUFREQ_GOV_START && event != CPUFREQ_GOV_POLICY_EXIT)
-	    || (state == CPUFREQ_GOV_POLICY_EXIT && event != CPUFREQ_GOV_POLICY_INIT)) {
+	if ((!policy->governor_enabled && (event == CPUFREQ_GOV_STOP)) ||
+	    (policy->governor_enabled && (event == CPUFREQ_GOV_START))) {
 		mutex_unlock(&cpufreq_governor_lock);
 		return -EBUSY;
 	}
 
-	/* Remove governor busy check before mutex lock to
-	 * avoid dead loop for not permitted operations
-	 * e.g. state == CPUFREQ_GOV_POLICY_EXIT,
-	 * event = CPUFREQ_GOV_START/STOP,
-	 * POLICY_EXIT will wait GOV_START/STOP complete
-	 * while GOV_START/STOP looped here
-	 */
-	if (is_governor_busy(policy)) {
-		mutex_unlock(&cpufreq_governor_lock);
-		cond_resched();
-		goto try_again;
-	}
-
-	set_governor_busy(policy, true);
-	if (event != CPUFREQ_GOV_LIMITS)
-		policy->governor_state = event;
+	if (event == CPUFREQ_GOV_STOP)
+		policy->governor_enabled = false;
+	else if (event == CPUFREQ_GOV_START)
+		policy->governor_enabled = true;
 
 	mutex_unlock(&cpufreq_governor_lock);
 
@@ -1679,8 +1660,10 @@ try_again:
 	} else {
 		/* Restore original values */
 		mutex_lock(&cpufreq_governor_lock);
-		if (event != CPUFREQ_GOV_LIMITS)
-			policy->governor_state = state;
+		if (event == CPUFREQ_GOV_STOP)
+			policy->governor_enabled = true;
+		else if (event == CPUFREQ_GOV_START)
+			policy->governor_enabled = false;
 		mutex_unlock(&cpufreq_governor_lock);
 	}
 
