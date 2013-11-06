@@ -40,7 +40,7 @@
 #define smp_store_release(p, v)						\
 do {									\
 	compiletime_assert_atomic_type(*p);				\
-	barrier();							\
+	smp_mb();							\
 	ACCESS_ONCE(*p) = (v);						\
 } while (0)
 
@@ -48,15 +48,15 @@ do {									\
 ({									\
 	typeof(*p) ___p1 = ACCESS_ONCE(*p);				\
 	compiletime_assert_atomic_type(*p);				\
-	barrier();							\
+	smp_mb();							\
 	___p1;								\
 })
 
 #else
 
-#define smp_mb()	dmb(ish)
-#define smp_rmb()	dmb(ishld)
-#define smp_wmb()	dmb(ishst)
+#define smp_mb()	asm volatile("dmb ish" : : : "memory")
+#define smp_rmb()	asm volatile("dmb ishld" : : : "memory")
+#define smp_wmb()	asm volatile("dmb ishst" : : : "memory")
 
 #define smp_store_release(p, v)						\
 do {									\
