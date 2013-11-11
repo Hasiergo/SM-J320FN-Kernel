@@ -138,3 +138,4 @@ int __init pm_autosleep_init(void)
 	wakeup_source_unregister(autosleep_ws);
 	return -ENOMEM;
 }
+
