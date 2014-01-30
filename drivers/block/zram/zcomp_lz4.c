@@ -23,11 +23,14 @@ static void zcomp_lz4_destroy(void *private)
 	kfree(private);
 }
 
+<<<<<<< HEAD
 static int zcomp_lz4_flags(void)
 {
 	return 0;
 }
 
+=======
+>>>>>>> 426b56b75428... Rebase zram and zsmalloc from 3.15.
 static int zcomp_lz4_compress(const unsigned char *src, unsigned char *dst,
 		size_t *dst_len, void *private)
 {
@@ -36,7 +39,11 @@ static int zcomp_lz4_compress(const unsigned char *src, unsigned char *dst,
 }
 
 static int zcomp_lz4_decompress(const unsigned char *src, size_t src_len,
+<<<<<<< HEAD
 		unsigned char *dst, void *private)
+=======
+		unsigned char *dst)
+>>>>>>> 426b56b75428... Rebase zram and zsmalloc from 3.15.
 {
 	size_t dst_len = PAGE_SIZE;
 	/* return  : Success if return 0 */
@@ -48,6 +55,9 @@ struct zcomp_backend zcomp_lz4 = {
 	.decompress = zcomp_lz4_decompress,
 	.create = zcomp_lz4_create,
 	.destroy = zcomp_lz4_destroy,
+<<<<<<< HEAD
 	.flags = zcomp_lz4_flags,
+=======
+>>>>>>> 426b56b75428... Rebase zram and zsmalloc from 3.15.
 	.name = "lz4",
 };

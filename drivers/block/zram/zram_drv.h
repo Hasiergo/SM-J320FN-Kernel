@@ -15,14 +15,10 @@
 #ifndef _ZRAM_DRV_H_
 #define _ZRAM_DRV_H_
 
-#include <linux/rwsem.h>
+#include <linux/spinlock.h>
 #include <linux/zsmalloc.h>
-#include <linux/crypto.h>
 
 #include "zcomp.h"
-
-extern u32 zram_compressed_size = 0;
-extern u32 zram_pages_stored = 0;
 
 /*
  * Some arbitrary value. This is just to catch
@@ -81,24 +77,25 @@ enum zram_pageflags {
 /* Allocated for each disk page */
 struct zram_table_entry {
 	unsigned long handle;
-	unsigned long value;
-};
+	u16 size;	/* object size (excluding header) */
+	u8 flags;
+} __aligned(4);
 
 struct zram_stats {
 	atomic64_t compr_data_size;	/* compressed size of pages stored */
 	atomic64_t num_reads;	/* failed + successful */
 	atomic64_t num_writes;	/* --do-- */
-	atomic64_t failed_reads;	/* can happen when memory is too low */
+	atomic64_t failed_reads;	/* should NEVER! happen */
 	atomic64_t failed_writes;	/* can happen when memory is too low */
 	atomic64_t invalid_io;	/* non-page-aligned I/O requests */
 	atomic64_t notify_free;	/* no. of swap slot free notifications */
 	atomic64_t zero_pages;		/* no. of zero filled pages */
 	atomic64_t pages_stored;	/* no. of pages currently stored */
-	atomic_long_t max_used_pages;	/* no. of maximum pages stored */
 };
 
 struct zram_meta {
-	struct zram_table_entry *table;
+	rwlock_t tb_lock;	/* protect table */
+	struct table *table;
 	struct zs_pool *mem_pool;
 };
 
@@ -114,17 +111,11 @@ struct zram {
 	 * This is the limit on amount of *uncompressed* worth of data
 	 * we can store in a disk.
 	 */
-	unsigned long limit_pages;
 
-	struct zram_stats stats;
-	/*
-	 * the number of pages zram can consume for storing compressed data
-	 */
 	u64 disksize;	/* bytes */
-	char compressor[CRYPTO_MAX_ALG_NAME];
-	/*
-	 * zram is claimed so open request will be failed
-	 */
-	bool claim; /* Protected by bdev->bd_mutex */
+	int max_comp_streams;
+	struct zram_stats stats;
+	char compressor[10];
+
 };
 #endif

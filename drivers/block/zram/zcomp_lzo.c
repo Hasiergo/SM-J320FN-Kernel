@@ -23,11 +23,14 @@ static void lzo_destroy(void *private)
 	kfree(private);
 }
 
+<<<<<<< HEAD
 static int lzo_flags(void)
 {
 	return 0;
 }
 
+=======
+>>>>>>> 426b56b75428... Rebase zram and zsmalloc from 3.15.
 static int lzo_compress(const unsigned char *src, unsigned char *dst,
 		size_t *dst_len, void *private)
 {
@@ -36,7 +39,11 @@ static int lzo_compress(const unsigned char *src, unsigned char *dst,
 }
 
 static int lzo_decompress(const unsigned char *src, size_t src_len,
+<<<<<<< HEAD
 		unsigned char *dst, void *private)
+=======
+		unsigned char *dst)
+>>>>>>> 426b56b75428... Rebase zram and zsmalloc from 3.15.
 {
 	size_t dst_len = PAGE_SIZE;
 	int ret = lzo1x_decompress_safe(src, src_len, dst, &dst_len);
@@ -48,6 +55,9 @@ struct zcomp_backend zcomp_lzo = {
 	.decompress = lzo_decompress,
 	.create = lzo_create,
 	.destroy = lzo_destroy,
+<<<<<<< HEAD
 	.flags = lzo_flags,
+=======
+>>>>>>> 426b56b75428... Rebase zram and zsmalloc from 3.15.
 	.name = "lzo",
 };
