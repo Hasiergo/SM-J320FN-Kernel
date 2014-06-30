@@ -67,6 +67,31 @@ ENDPROC(tegra_disable_clean_inv_dcache)
 
 #ifdef CONFIG_PM_SLEEP
 /*
+<<<<<<< HEAD
+=======
+ * tegra_init_l2_for_a15
+ *
+ * set up the correct L2 cache data RAM latency
+ */
+ENTRY(tegra_init_l2_for_a15)
+	mrc	p15, 0, r0, c0, c0, 5
+	ubfx	r0, r0, #8, #4
+	tst	r0, #1				@ only need for cluster 0
+	bne	_exit_init_l2_a15
+
+	mrc	p15, 0x1, r0, c9, c0, 2
+	and	r0, r0, #7
+	cmp	r0, #2
+	bicne	r0, r0, #7
+	orrne	r0, r0, #2
+	mcrne	p15, 0x1, r0, c9, c0, 2
+_exit_init_l2_a15:
+
+	ret	lr
+ENDPROC(tegra_init_l2_for_a15)
+
+/*
+>>>>>>> 6ebbf2ce437b... ARM: convert all "mov.* pc, reg" to "bx reg" for ARMv6+
  * tegra_sleep_cpu_finish(unsigned long v2p)
  *
  * enters suspend in LP2 by turning off the mmu and jumping to
@@ -84,7 +109,7 @@ ENTRY(tegra_sleep_cpu_finish)
 	add	r3, r3, r0
 	mov	r0, r1
 
-	mov	pc, r3
+	ret	r3
 ENDPROC(tegra_sleep_cpu_finish)
 
 /*
@@ -110,7 +135,7 @@ ENTRY(tegra_shut_off_mmu)
 	mov	r5, #0
 	str	r5, [r4, #L2X0_CTRL]
 #endif
-	mov	pc, r0
+	ret	r0
 ENDPROC(tegra_shut_off_mmu)
 	.popsection
 
@@ -127,6 +152,6 @@ ENTRY(tegra_switch_cpu_to_pllp)
 	str	r0, [r5, #CLK_RESET_CCLK_BURST]
 	mov	r0, #0
 	str	r0, [r5, #CLK_RESET_CCLK_DIVIDER]
-	mov	pc, lr
+	ret	lr
 ENDPROC(tegra_switch_cpu_to_pllp)
 #endif

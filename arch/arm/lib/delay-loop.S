@@ -40,23 +40,23 @@ ENTRY(__loop_const_udelay)			@ 0 <= r0 <= 0xfffffaf0
 ENTRY(__loop_delay)
 		subs	r0, r0, #1
 #if 0
-		movls	pc, lr
+		retls	lr
 		subs	r0, r0, #1
-		movls	pc, lr
+		retls	lr
 		subs	r0, r0, #1
-		movls	pc, lr
+		retls	lr
 		subs	r0, r0, #1
-		movls	pc, lr
+		retls	lr
 		subs	r0, r0, #1
-		movls	pc, lr
+		retls	lr
 		subs	r0, r0, #1
-		movls	pc, lr
+		retls	lr
 		subs	r0, r0, #1
-		movls	pc, lr
+		retls	lr
 		subs	r0, r0, #1
 #endif
 		bhi	__loop_delay
-		mov	pc, lr
+		ret	lr
 ENDPROC(__loop_udelay)
 ENDPROC(__loop_const_udelay)
 ENDPROC(__loop_delay)
