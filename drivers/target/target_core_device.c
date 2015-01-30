@@ -1039,9 +1039,14 @@ int se_dev_set_optimal_sectors(struct se_device *dev, u32 optimal_sectors)
 	}
 	if (optimal_sectors > dev->dev_attrib.hw_max_sectors) {
 		pr_err("dev[%p]: Passed optimal_sectors %u cannot be"
+<<<<<<< HEAD
                         " greater than hw_max_sectors: %u\n", dev,
                         optimal_sectors, dev->dev_attrib.hw_max_sectors);
 			
+=======
+			" greater than hw_max_sectors: %u\n", dev,
+			optimal_sectors, dev->dev_attrib.hw_max_sectors);
+>>>>>>> e2d881763200... target: Drop arbitrary maximum I/O size limit
 		return -EINVAL;
 	}
 
@@ -1443,7 +1448,11 @@ struct se_device *target_alloc_device(struct se_hba *hba, const char *name)
 				DA_UNMAP_GRANULARITY_ALIGNMENT_DEFAULT;
 	dev->dev_attrib.max_write_same_len = DA_MAX_WRITE_SAME_LEN;
 	dev->dev_attrib.fabric_max_sectors = DA_FABRIC_MAX_SECTORS;
+<<<<<<< HEAD
 	
+=======
+
+>>>>>>> e2d881763200... target: Drop arbitrary maximum I/O size limit
 	return dev;
 }
 
@@ -1475,7 +1484,11 @@ int target_configure_device(struct se_device *dev)
 	dev->dev_attrib.hw_max_sectors =
 		se_dev_align_max_sectors(dev->dev_attrib.hw_max_sectors,
 					 dev->dev_attrib.hw_block_size);
+<<<<<<< HEAD
         dev->dev_attrib.optimal_sectors = dev->dev_attrib.hw_max_sectors;
+=======
+	dev->dev_attrib.optimal_sectors = dev->dev_attrib.hw_max_sectors;
+>>>>>>> e2d881763200... target: Drop arbitrary maximum I/O size limit
 
 	dev->dev_index = scsi_get_new_index(SCSI_DEVICE_INDEX);
 	dev->creation_time = get_jiffies_64();

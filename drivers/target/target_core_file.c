@@ -554,6 +554,7 @@ fd_execute_rw(struct se_cmd *cmd)
 	enum dma_data_direction data_direction = cmd->data_direction;
 	struct se_device *dev = cmd->se_dev;
 	int ret = 0;
+<<<<<<< HEAD
 
         /*
          * We are currently limited by the number of iovecs (2048) per
@@ -565,6 +566,18 @@ fd_execute_rw(struct se_cmd *cmd)
                         cmd->data_length, FD_MAX_BYTES);
                 return TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
         }
+=======
+	/*
+	 * We are currently limited by the number of iovecs (2048) per
+	 * single vfs_[writev,readv] call.
+	 */
+	if (cmd->data_length > FD_MAX_BYTES) {
+		pr_err("FILEIO: Not able to process I/O of %u bytes due to"
+		       "FD_MAX_BYTES: %u iovec count limitiation\n",
+			cmd->data_length, FD_MAX_BYTES);
+		return TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
+	}
+>>>>>>> e2d881763200... target: Drop arbitrary maximum I/O size limit
 	/*
 	 * Call vectorized fileio functions to map struct scatterlist
 	 * physical memory addresses to struct iovec virtual memory.
