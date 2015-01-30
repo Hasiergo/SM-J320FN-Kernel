@@ -608,18 +608,43 @@ isert_put_conn(struct isert_conn *isert_conn)
  * @isert_conn: isert connection struct
  *
  * Notes:
+<<<<<<< HEAD
  * In case the connection state is FULL_FEATURE, move state
  * to TEMINATING and start teardown sequence (rdma_disconnect).
  * In case the connection state is UP, complete flush as well.
+=======
+ * In case the connection state is UP, move state
+ * to TEMINATING and start teardown sequence (rdma_disconnect).
+>>>>>>> 839eac57ebae... iscsi,iser-target: Initiate termination only once
  *
  * This routine must be called with conn_mutex held. Thus it is
  * safe to call multiple times.
  */
+<<<<<<< HEAD
+=======
 static void
 isert_conn_terminate(struct isert_conn *isert_conn)
 {
 	int err;
 
+	if (isert_conn->state == ISER_CONN_UP) {
+		isert_conn->state = ISER_CONN_TERMINATING;
+		pr_info("Terminating conn %p state %d\n",
+			   isert_conn, isert_conn->state);
+		err = rdma_disconnect(isert_conn->conn_cm_id);
+		if (err)
+			pr_warn("Failed rdma_disconnect isert_conn %p\n",
+				   isert_conn);
+	}
+}
+
+>>>>>>> 839eac57ebae... iscsi,iser-target: Initiate termination only once
+static void
+isert_conn_terminate(struct isert_conn *isert_conn)
+{
+	int err;
+
+<<<<<<< HEAD
 	switch (isert_conn->state) {
 	case ISER_CONN_TERMINATING:
 		break;
@@ -674,6 +699,19 @@ isert_np_cma_handler(struct isert_np *isert_np,
 static int
 isert_disconnected_handler(struct rdma_cm_id *cma_id,
 			   enum rdma_cm_event_type event)
+=======
+	pr_debug("isert_disconnect_work(): >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
+	mutex_lock(&isert_conn->conn_mutex);
+	isert_conn_terminate(isert_conn);
+	mutex_unlock(&isert_conn->conn_mutex);
+
+	pr_info("conn %p completing conn_wait\n", isert_conn);
+	complete(&isert_conn->conn_wait);
+}
+
+static int
+isert_disconnected_handler(struct rdma_cm_id *cma_id)
+>>>>>>> 839eac57ebae... iscsi,iser-target: Initiate termination only once
 {
 	struct isert_np *isert_np = cma_id->context;
 	struct isert_conn *isert_conn;
@@ -692,8 +730,13 @@ isert_disconnected_handler(struct rdma_cm_id *cma_id,
 	pr_info("conn %p completing conn_wait\n", isert_conn);
 	complete(&isert_conn->conn_wait);
 
+<<<<<<< HEAD
 	if (terminating)
 		goto out;
+=======
+	INIT_WORK(&isert_conn->conn_logout_work, isert_disconnect_work);
+	schedule_work(&isert_conn->conn_logout_work);
+>>>>>>> 839eac57ebae... iscsi,iser-target: Initiate termination only once
 
 	mutex_lock(&isert_np->np_accept_mutex);
 	if (!list_empty(&isert_conn->conn_accept_node)) {
@@ -705,6 +748,14 @@ isert_disconnected_handler(struct rdma_cm_id *cma_id,
 
 out:
 	return 0;
+}
+
+static void
+isert_connect_error(struct rdma_cm_id *cma_id)
+{
+	struct isert_conn *isert_conn = (struct isert_conn *)cma_id->context;
+
+	isert_put_conn(isert_conn);
 }
 
 static int
@@ -740,12 +791,20 @@ isert_cma_handler(struct rdma_cm_id *cma_id, struct rdma_cm_event *event)
 	case RDMA_CM_EVENT_DISCONNECTED:   /* FALLTHRU */
 	case RDMA_CM_EVENT_DEVICE_REMOVAL: /* FALLTHRU */
 	case RDMA_CM_EVENT_TIMEWAIT_EXIT:  /* FALLTHRU */
+<<<<<<< HEAD
 		ret = isert_disconnected_handler(cma_id, event->event);
+=======
+		ret = isert_disconnected_handler(cma_id);
+>>>>>>> 839eac57ebae... iscsi,iser-target: Initiate termination only once
 		break;
 	case RDMA_CM_EVENT_REJECTED:       /* FALLTHRU */
 	case RDMA_CM_EVENT_UNREACHABLE:    /* FALLTHRU */
 	case RDMA_CM_EVENT_CONNECT_ERROR:
+<<<<<<< HEAD
 		ret = isert_connect_error(cma_id);
+=======
+		isert_connect_error(cma_id);
+>>>>>>> 839eac57ebae... iscsi,iser-target: Initiate termination only once
 		break;
 	default:
 		pr_err("Unhandled RDMA CMA event: %d\n", event->event);
@@ -2438,8 +2497,19 @@ static void isert_wait_conn(struct iscsi_conn *conn)
 	mutex_unlock(&isert_conn->conn_mutex);
 
 	wait_for_completion(&isert_conn->conn_wait_comp_err);
+<<<<<<< HEAD
 
 	queue_work(isert_release_wq, &isert_conn->release_work);
+=======
+	wait_for_completion(&isert_conn->conn_wait);
+
+	mutex_lock(&isert_conn->conn_mutex);
+	isert_conn->state = ISER_CONN_DOWN;
+	mutex_unlock(&isert_conn->conn_mutex);
+
+	pr_info("Destroying conn %p\n", isert_conn);
+	isert_put_conn(isert_conn);
+>>>>>>> 839eac57ebae... iscsi,iser-target: Initiate termination only once
 }
 
 static void isert_free_conn(struct iscsi_conn *conn)
