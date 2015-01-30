@@ -540,8 +540,12 @@ isert_connect_release(struct isert_conn *isert_conn)
 	pr_debug("Entering isert_connect_release(): >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
 
 	isert_free_rx_descriptors(isert_conn);
+<<<<<<< HEAD
 	if (isert_conn->conn_cm_id)
 		rdma_destroy_id(isert_conn->conn_cm_id);
+=======
+	rdma_destroy_id(isert_conn->conn_cm_id);
+>>>>>>> b524a8828bad... iser-target: Fix connected_handler + teardown flow race
 
 	if (isert_conn->conn_qp) {
 		cq_index = ((struct isert_cq_desc *)
@@ -750,10 +754,16 @@ static int
 isert_disconnected_handler(struct rdma_cm_id *cma_id)
 >>>>>>> 839eac57ebae... iscsi,iser-target: Initiate termination only once
 {
+<<<<<<< HEAD
 	struct isert_np *isert_np = cma_id->context;
+=======
+	struct iscsi_np *np = cma_id->context;
+	struct isert_np *isert_np = np->np_context;
+>>>>>>> b524a8828bad... iser-target: Fix connected_handler + teardown flow race
 	struct isert_conn *isert_conn;
 	bool terminating = false;
 
+<<<<<<< HEAD
 	if (isert_np->np_cm_id == cma_id)
 		return isert_np_cma_handler(cma_id->context, event);
 
@@ -775,6 +785,14 @@ isert_disconnected_handler(struct rdma_cm_id *cma_id)
 	INIT_WORK(&isert_conn->conn_logout_work, isert_disconnect_work);
 	schedule_work(&isert_conn->conn_logout_work);
 >>>>>>> 839eac57ebae... iscsi,iser-target: Initiate termination only once
+=======
+	if (isert_np->np_cm_id == cma_id) {
+		isert_np->np_cm_id = NULL;
+		return -1;
+	}
+
+	isert_conn = cma_id->qp->qp_context;
+>>>>>>> b524a8828bad... iser-target: Fix connected_handler + teardown flow race
 
 	mutex_lock(&isert_np->np_accept_mutex);
 	if (!list_empty(&isert_conn->conn_accept_node)) {
@@ -799,7 +817,7 @@ out:
 static void
 isert_connect_error(struct rdma_cm_id *cma_id)
 {
-	struct isert_conn *isert_conn = (struct isert_conn *)cma_id->context;
+	struct isert_conn *isert_conn = cma_id->qp->qp_context;
 
 	isert_put_conn(isert_conn);
 }
