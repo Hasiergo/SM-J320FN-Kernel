@@ -48,11 +48,15 @@ isert_rdma_post_recvl(struct isert_conn *isert_conn);
 static int
 isert_rdma_accept(struct isert_conn *isert_conn);
 <<<<<<< HEAD
+<<<<<<< HEAD
 struct rdma_cm_id *isert_setup_id(struct isert_np *isert_np);
 
 static void isert_release_work(struct work_struct *work);
 =======
 >>>>>>> 022ff2f59792... iser-target: Parallelize CM connection establishment
+=======
+struct rdma_cm_id *isert_setup_id(struct isert_np *isert_np);
+>>>>>>> b80e6c5ae062... iser-target: Handle ADDR_CHANGE event for listener cm_id
 
 static void
 isert_qp_event_callback(struct ib_event *e, void *context)
@@ -712,6 +716,7 @@ isert_conn_terminate(struct isert_conn *isert_conn)
 static int
 isert_np_cma_handler(struct isert_np *isert_np,
 		     enum rdma_cm_event_type event)
+<<<<<<< HEAD
 {
 	pr_debug("isert np %p, handling event %d\n", isert_np, event);
 
@@ -787,9 +792,40 @@ isert_disconnected_handler(struct rdma_cm_id *cma_id)
 >>>>>>> 839eac57ebae... iscsi,iser-target: Initiate termination only once
 =======
 	if (isert_np->np_cm_id == cma_id) {
+=======
+{
+	pr_debug("isert np %p, handling event %d\n", isert_np, event);
+
+	switch (event) {
+	case RDMA_CM_EVENT_DEVICE_REMOVAL:
+>>>>>>> b80e6c5ae062... iser-target: Handle ADDR_CHANGE event for listener cm_id
 		isert_np->np_cm_id = NULL;
-		return -1;
+		break;
+	case RDMA_CM_EVENT_ADDR_CHANGE:
+		isert_np->np_cm_id = isert_setup_id(isert_np);
+		if (IS_ERR(isert_np->np_cm_id)) {
+			pr_err("isert np %p setup id failed: %ld\n",
+				 isert_np, PTR_ERR(isert_np->np_cm_id));
+			isert_np->np_cm_id = NULL;
+		}
+		break;
+	default:
+		pr_err("isert np %p Unexpected event %d\n",
+			  isert_np, event);
 	}
+
+	return -1;
+}
+
+static int
+isert_disconnected_handler(struct rdma_cm_id *cma_id,
+			   enum rdma_cm_event_type event)
+{
+	struct isert_np *isert_np = cma_id->context;
+	struct isert_conn *isert_conn;
+
+	if (isert_np->np_cm_id == cma_id)
+		return isert_np_cma_handler(cma_id->context, event);
 
 	isert_conn = cma_id->qp->qp_context;
 >>>>>>> b524a8828bad... iser-target: Fix connected_handler + teardown flow race
@@ -856,10 +892,14 @@ isert_cma_handler(struct rdma_cm_id *cma_id, struct rdma_cm_event *event)
 	case RDMA_CM_EVENT_DEVICE_REMOVAL: /* FALLTHRU */
 	case RDMA_CM_EVENT_TIMEWAIT_EXIT:  /* FALLTHRU */
 <<<<<<< HEAD
+<<<<<<< HEAD
 		ret = isert_disconnected_handler(cma_id, event->event);
 =======
 		ret = isert_disconnected_handler(cma_id);
 >>>>>>> 839eac57ebae... iscsi,iser-target: Initiate termination only once
+=======
+		ret = isert_disconnected_handler(cma_id, event->event);
+>>>>>>> b80e6c5ae062... iser-target: Handle ADDR_CHANGE event for listener cm_id
 		break;
 	case RDMA_CM_EVENT_REJECTED:       /* FALLTHRU */
 	case RDMA_CM_EVENT_UNREACHABLE:    /* FALLTHRU */
