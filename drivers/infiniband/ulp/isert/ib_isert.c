@@ -47,9 +47,12 @@ static int
 isert_rdma_post_recvl(struct isert_conn *isert_conn);
 static int
 isert_rdma_accept(struct isert_conn *isert_conn);
+<<<<<<< HEAD
 struct rdma_cm_id *isert_setup_id(struct isert_np *isert_np);
 
 static void isert_release_work(struct work_struct *work);
+=======
+>>>>>>> 022ff2f59792... iser-target: Parallelize CM connection establishment
 
 static void
 isert_qp_event_callback(struct ib_event *e, void *context)
@@ -575,6 +578,9 @@ isert_connected_handler(struct rdma_cm_id *cma_id)
 	pr_info("conn %p\n", isert_conn);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 022ff2f59792... iser-target: Parallelize CM connection establishment
 	if (!kref_get_unless_zero(&isert_conn->conn_kref)) {
 		pr_warn("conn %p connect_release is running\n", isert_conn);
 		return;
@@ -584,10 +590,13 @@ isert_connected_handler(struct rdma_cm_id *cma_id)
 	if (isert_conn->state != ISER_CONN_FULL_FEATURE)
 		isert_conn->state = ISER_CONN_UP;
 	mutex_unlock(&isert_conn->conn_mutex);
+<<<<<<< HEAD
 =======
 	isert_conn->state = ISER_CONN_UP;
 	kref_get(&isert_conn->conn_kref);
 >>>>>>> dc0672f1f216... iser-target: Fix flush + disconnect completion handling
+=======
+>>>>>>> 022ff2f59792... iser-target: Parallelize CM connection establishment
 }
 
 static void
@@ -1046,12 +1055,18 @@ isert_put_login_tx(struct iscsi_conn *conn, struct iscsi_login *login,
 
 			/* Now we are in FULL_FEATURE phase */
 <<<<<<< HEAD
+<<<<<<< HEAD
 			mutex_lock(&isert_conn->conn_mutex);
 			isert_conn->state = ISER_CONN_FULL_FEATURE;
 			mutex_unlock(&isert_conn->conn_mutex);
 =======
 			isert_conn->state = ISER_CONN_FULL_FEATURE;
 >>>>>>> dc0672f1f216... iser-target: Fix flush + disconnect completion handling
+=======
+			mutex_lock(&isert_conn->conn_mutex);
+			isert_conn->state = ISER_CONN_FULL_FEATURE;
+			mutex_unlock(&isert_conn->conn_mutex);
+>>>>>>> 022ff2f59792... iser-target: Parallelize CM connection establishment
 			goto post_send;
 		}
 
