@@ -2612,6 +2612,7 @@ static void isert_wait_conn(struct iscsi_conn *conn)
 
 	wait_for_completion(&isert_conn->conn_wait_comp_err);
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 	queue_work(isert_release_wq, &isert_conn->release_work);
 =======
@@ -2624,6 +2625,11 @@ static void isert_wait_conn(struct iscsi_conn *conn)
 	pr_info("Destroying conn %p\n", isert_conn);
 	isert_put_conn(isert_conn);
 >>>>>>> 839eac57ebae... iscsi,iser-target: Initiate termination only once
+=======
+
+	INIT_WORK(&isert_conn->release_work, isert_release_work);
+	queue_work(isert_release_wq, &isert_conn->release_work);
+>>>>>>> a3ecefb6bf2c... iser-target: Fix implicit termination of connections
 }
 
 static void isert_free_conn(struct iscsi_conn *conn)

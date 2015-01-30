@@ -108,9 +108,13 @@ struct isert_conn {
 	struct completion	conn_wait_comp_err;
 	struct kref		conn_kref;
 <<<<<<< HEAD
+<<<<<<< HEAD
 	struct work_struct	release_work;
 =======
 >>>>>>> 839eac57ebae... iscsi,iser-target: Initiate termination only once
+=======
+	struct work_struct	release_work;
+>>>>>>> a3ecefb6bf2c... iser-target: Fix implicit termination of connections
 };
 
 #define ISERT_MAX_CQ 64
