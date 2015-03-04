@@ -22,7 +22,6 @@ obj-y			:= filemap.o mempool.o oom_kill.o fadvise.o \
 			   interval_tree.o $(mmu-y) \
 			   showmem.o vmpressure.o
 
-
 obj-y += init-mm.o
 
 ifdef CONFIG_NO_BOOTMEM
