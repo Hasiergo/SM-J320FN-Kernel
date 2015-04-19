@@ -1282,11 +1282,7 @@ static void bprm_fill_uid(struct linux_binprm *bprm)
 		return;
 
 	inode = file_inode(bprm->file);
-#if 0	// because READ_ONCE is not defined
-	mode = READ_ONCE(inode->i_mode);
-#else
 	mode = ACCESS_ONCE(inode->i_mode);
-#endif
 	if (!(mode & (S_ISUID|S_ISGID)))
 		return;
 
@@ -1324,6 +1320,9 @@ static void bprm_fill_uid(struct linux_binprm *bprm)
 int prepare_binprm(struct linux_binprm *bprm)
 {
 	int retval;
+
+	if (bprm->file->f_op == NULL)
+ 		return -EACCES;
 
 	bprm_fill_uid(bprm);
 
