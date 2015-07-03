@@ -1852,14 +1852,8 @@ static int do_remount(struct path *path, int flags, int mnt_flags,
 		err = change_mount_flags(path->mnt, flags);
 	else if (!capable(CAP_SYS_ADMIN))
 		err = -EPERM;
-	else {
+	else 
 		err = do_remount_sb(sb, flags, data, 0);
-		namespace_lock();
-		br_write_lock(&vfsmount_lock);
-		propagate_remount(mnt);
-		br_write_unlock(&vfsmount_lock);
-		namespace_unlock();
-	}
 	if (!err) {
 		br_write_lock(&vfsmount_lock);
 		mnt_flags |= mnt->mnt.mnt_flags & ~MNT_USER_SETTABLE_MASK;
