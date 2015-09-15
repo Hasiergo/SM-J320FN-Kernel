@@ -425,6 +425,7 @@ static inline void binder_lock(const char *tag)
 {
 	trace_binder_lock(tag);
 	mutex_lock(&binder_main_lock);
+	preempt_disable();
 	trace_binder_locked(tag);
 }
 
@@ -432,6 +433,7 @@ static inline void binder_unlock(const char *tag)
 {
 	trace_binder_unlock(tag);
 	mutex_unlock(&binder_main_lock);
+	preempt_enable();
 }
 
 static void binder_set_nice(long nice)
@@ -616,6 +618,7 @@ static int binder_update_page_range(struct binder_proc *proc, int allocate,
 		}
 		/* vm_insert_page does not seem to increment the refcount */
 	}
+	preempt_disable();
 	if (mm) {
 		up_write(&mm->mmap_sem);
 		mmput(mm);
@@ -638,6 +641,7 @@ err_alloc_page_failed:
 		;
 	}
 err_no_vma:
+	preempt_disable();
 	if (mm) {
 		up_write(&mm->mmap_sem);
 		mmput(mm);
@@ -1705,9 +1709,7 @@ static void binder_transaction(struct binder_proc *proc,
 	list_add_tail(&tcomplete->entry, &thread->todo);
 	if (target_wait) {
 		if (reply || !(t->flags & TF_ONE_WAY)) {
-			preempt_disable();
 			wake_up_interruptible_sync(target_wait);
-			sched_preempt_enable_no_resched();
 		} else {
 			wake_up_interruptible(target_wait);
 		}
@@ -2077,7 +2079,8 @@ int binder_thread_write(struct binder_proc *proc, struct binder_thread *thread,
 			struct binder_work *w;
 			binder_uintptr_t cookie;
 			struct binder_ref_death *death = NULL;
-			if (get_user(cookie, (binder_uintptr_t __user *)ptr))
+
+			if (get_user_preempt_disabled(cookie, (binder_uintptr_t __user *)ptr))
 				return -EFAULT;
 
 			ptr += sizeof(void *);
@@ -2633,7 +2636,7 @@ static int binder_ioctl_write_read(struct file *filp,
 		ret = -EINVAL;
 		goto out;
 	}
-	if (copy_from_user(&bwr, ubuf, sizeof(bwr))) {
+	if (copy_from_user_preempt_disabled(&bwr, ubuf, sizeof(bwr))) {
 		ret = -EFAULT;
 		goto out;
 	}
@@ -2651,7 +2654,7 @@ static int binder_ioctl_write_read(struct file *filp,
 		trace_binder_write_done(ret);
 		if (ret < 0) {
 			bwr.read_consumed = 0;
-			if (copy_to_user(ubuf, &bwr, sizeof(bwr)))
+			if (copy_to_user_preempt_disabled(ubuf, &bwr, sizeof(bwr)))
 				ret = -EFAULT;
 			goto out;
 		}
@@ -2665,7 +2668,7 @@ static int binder_ioctl_write_read(struct file *filp,
 		if (!list_empty(&proc->todo))
 			wake_up_interruptible(&proc->wait);
 		if (ret < 0) {
-			if (copy_to_user(ubuf, &bwr, sizeof(bwr)))
+			if (copy_to_user_preempt_disabled(ubuf, &bwr, sizeof(bwr)))
 				ret = -EFAULT;
 			goto out;
 		}
@@ -2675,7 +2678,7 @@ static int binder_ioctl_write_read(struct file *filp,
 		     proc->pid, thread->pid,
 		     (u64)bwr.write_consumed, (u64)bwr.write_size,
 		     (u64)bwr.read_consumed, (u64)bwr.read_size);
-	if (copy_to_user(ubuf, &bwr, sizeof(bwr))) {
+	if (copy_to_user_preempt_disabled(ubuf, &bwr, sizeof(bwr))) {
 		ret = -EFAULT;
 		goto out;
 	}
@@ -2776,7 +2779,7 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			ret = -EINVAL;
 			goto err;
 		}
-		if (put_user(BINDER_CURRENT_PROTOCOL_VERSION,
+		if (put_user_preempt_disabled(BINDER_CURRENT_PROTOCOL_VERSION,
 			     &ver->protocol_version)) {
 			ret = -EINVAL;
 			goto err;
@@ -3173,8 +3176,12 @@ static void binder_deferred_func(struct work_struct *work)
 
 	int defer;
 	do {
-		binder_lock(__func__);
+		trace_binder_lock(__func__);
+		mutex_lock(&binder_main_lock);
+		trace_binder_locked(__func__);
+
 		mutex_lock(&binder_deferred_lock);
+		preempt_disable();
 		if (!hlist_empty(&binder_deferred_list)) {
 			proc = hlist_entry(binder_deferred_list.first,
 					struct binder_proc, deferred_work_node);
@@ -3200,7 +3207,9 @@ static void binder_deferred_func(struct work_struct *work)
 		if (defer & BINDER_DEFERRED_RELEASE)
 			binder_deferred_release(proc); /* frees proc */
 
-		binder_unlock(__func__);
+		trace_binder_unlock(__func__);
+		mutex_unlock(&binder_main_lock);
+		preempt_enable_no_resched();
 		if (files)
 			put_files_struct(files);
 	} while (proc);
