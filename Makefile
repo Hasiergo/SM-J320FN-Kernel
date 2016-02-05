@@ -382,7 +382,8 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
                    -Wno-misleading-indentation -Wno-tautological-compare \
                    -Wno-error=misleading-indentation -Wno-parentheses \
 		   -fdiagnostics-show-option \
-                   -std=gnu89
+		   -std=gnu89 \
+		   -munaligned-access
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
