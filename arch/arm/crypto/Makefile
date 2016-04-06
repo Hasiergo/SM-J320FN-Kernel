@@ -26,7 +26,6 @@ $(src)/aesbs-core.S_shipped: $(src)/bsaes-armv7.pl
 	$(call cmd,perl)
 
 .PRECIOUS: $(obj)/aesbs-core.S
-
 $(src)/sha256-core.S_shipped: $(src)/sha256-armv4.pl
 	$(call cmd,perl)
 
