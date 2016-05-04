@@ -59,7 +59,19 @@
 
 #ifndef __ASSEMBLY__
 
-#ifdef CONFIG_CPU_USE_DOMAINS
+#ifdef CONFIG_CPU_CP15_MMU
+static inline unsigned int get_domain(void)
+{
+	unsigned int domain;
+
+	asm(
+	"mrc	p15, 0, %0, c3, c0	@ get domain"
+	 : "=r" (domain)
+	 : "m" (current_thread_info()->cpu_domain));
+
+	return domain;
+}
+
 static inline void set_domain(unsigned val)
 {
 	asm volatile(
@@ -67,6 +79,16 @@ static inline void set_domain(unsigned val)
 	  : : "r" (val));
 	isb();
 }
+#else
+static inline unsigned int get_domain(void)
+{
+	return 0;
+}
+
+static inline void set_domain(unsigned val)
+{
+}
+#endif
 
 #define modify_domain(dom,type)					\
 	do {							\
