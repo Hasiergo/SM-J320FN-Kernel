@@ -436,6 +436,61 @@ static inline void binder_unlock(const char *tag)
 	preempt_enable();
 }
 
+static inline void *kzalloc_preempt_disabled(size_t size)
+{
+	void *ptr;
+
+	ptr = kzalloc(size, GFP_NOWAIT);
+	if (ptr)
+		return ptr;
+
+	preempt_enable_no_resched();
+	ptr = kzalloc(size, GFP_KERNEL);
+	preempt_disable();
+
+	return ptr;
+}
+
+static inline long copy_to_user_preempt_disabled(void __user *to, const void *from, long n)
+{
+	long ret;
+
+	preempt_enable_no_resched();
+	ret = copy_to_user(to, from, n);
+	preempt_disable();
+	return ret;
+}
+
+static inline long copy_from_user_preempt_disabled(void *to, const void __user *from, long n)
+{
+	long ret;
+
+	preempt_enable_no_resched();
+	ret = copy_from_user(to, from, n);
+	preempt_disable();
+	return ret;
+}
+
+#define get_user_preempt_disabled(x, ptr)	\
+({						\
+	int __ret;				\
+	preempt_enable_no_resched();		\
+	barrier();				\
+	__ret = get_user(x, ptr);		\
+	preempt_disable();			\
+	__ret;					\
+})
+
+#define put_user_preempt_disabled(x, ptr)	\
+({						\
+	int __ret;				\
+	preempt_enable_no_resched();		\
+	barrier();				\
+	__ret = put_user(x, ptr);		\
+	preempt_disable();			\
+	__ret;					\
+})
+
 static void binder_set_nice(long nice)
 {
 	long min_nice;
