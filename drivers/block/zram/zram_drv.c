@@ -1220,9 +1220,7 @@ static int zram_add(void)
 	}
 	strlcpy(zram->compressor, default_compressor, sizeof(zram->compressor));
 	zram->meta = NULL;
-
-	pr_info("Added device: %s\n", zram->disk->disk_name);
-	return device_id;
+	return 0;
 
 out_free_disk:
 	del_gendisk(zram->disk);
