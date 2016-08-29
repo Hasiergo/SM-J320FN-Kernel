@@ -131,9 +131,15 @@ static bool io_is_busy = 0;
  * up_threshold_any_cpu_freq then do not let the frequency to drop below
  * sync_freq
  */
+<<<<<<< HEAD
 static unsigned int up_threshold_any_cpu_load = 97;
 static unsigned int sync_freq = 729600;
 static unsigned int up_threshold_any_cpu_freq = 960000;
+=======
+static unsigned int up_threshold_any_cpu_load = 90;
+static unsigned int sync_freq = 700000;
+static unsigned int up_threshold_any_cpu_freq = 900000;
+>>>>>>> 3727ccb0e11e... cpufreq: intelliactive: Fixup clock values
 
 static int two_phase_freq_array[NR_CPUS] = {[0 ... NR_CPUS-1] = 1036800} ;
 

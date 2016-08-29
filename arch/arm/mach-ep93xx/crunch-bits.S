@@ -190,16 +190,7 @@ crunch_load:
 	cfldr64		mvdx14, [r0, #CRUNCH_MVDX14]
 	cfldr64		mvdx15, [r0, #CRUNCH_MVDX15]
 
-<<<<<<< HEAD
 	mov	pc, lr
-=======
-1:
-#ifdef CONFIG_PREEMPT_COUNT
-	get_thread_info r10
-#endif
-2:	dec_preempt_count r10, r3
-	ret	lr
->>>>>>> 6ebbf2ce437b... ARM: convert all "mov.* pc, reg" to "bx reg" for ARMv6+
 
 /*
  * Back up crunch regs to save area and disable access to them
@@ -278,7 +269,7 @@ ENTRY(crunch_task_copy)
 	mov	r3, lr				@ preserve return address
 	bl	crunch_save
 	msr	cpsr_c, ip			@ restore interrupt mode
-	ret	r3
+	mov	pc, r3
 
 /*
  * Restore crunch state from given memory address
@@ -311,4 +302,4 @@ ENTRY(crunch_task_restore)
 	mov	r3, lr				@ preserve return address
 	bl	crunch_load
 	msr	cpsr_c, ip			@ restore interrupt mode
-	ret	r3
+	mov	pc, r3
