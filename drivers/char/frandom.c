@@ -414,8 +414,3 @@ module_exit(frandom_cleanup_module);
 
 EXPORT_SYMBOL(erandom_get_random_bytes);
 
-MODULE_AUTHOR("Eli Billauer <eli@billauer.co.il>");
-MODULE_DESCRIPTION("'char_random_frandom' - A fast random generator for "
-"general usage");
-MODULE_LICENSE("GPL");
-
