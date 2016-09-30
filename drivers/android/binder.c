@@ -57,8 +57,6 @@ static HLIST_HEAD(binder_dead_nodes);
 
 static struct dentry *binder_debugfs_dir_entry_root;
 static struct dentry *binder_debugfs_dir_entry_proc;
-static struct binder_node *binder_context_mgr_node;
-static kuid_t binder_context_mgr_uid = INVALID_UID;
 static int binder_last_id;
 static struct workqueue_struct *binder_deferred_workqueue;
 
@@ -209,6 +207,15 @@ static struct binder_transaction_log_entry *binder_transaction_log_add(
 	}
 	return e;
 }
+
+struct binder_context {
+	struct binder_node *binder_context_mgr_node;
+	kuid_t binder_context_mgr_uid;
+};
+
+static struct binder_context global_context = {
+	.binder_context_mgr_uid = INVALID_UID,
+};
 
 struct binder_work {
 	struct list_head entry;
@@ -1384,6 +1391,7 @@ static void binder_transaction(struct binder_proc *proc,
 	struct binder_transaction *in_reply_to = NULL;
 	struct binder_transaction_log_entry *e;
 	uint32_t return_error;
+	struct binder_context *context = proc->context;
 
 	e = binder_transaction_log_add(&binder_transaction_log);
 	e->call_type = reply ? 2 : !!(tr->flags & TF_ONE_WAY);
@@ -2749,9 +2757,11 @@ static int binder_ioctl_set_ctx_mgr(struct file *filp)
 {
 	int ret = 0;
 	struct binder_proc *proc = filp->private_data;
+	struct binder_context *context = proc->context;
+
 	kuid_t curr_euid = current_euid();
 
-	if (binder_context_mgr_node != NULL) {
+	if (context->binder_context_mgr_node) {
 		pr_err("BINDER_SET_CONTEXT_MGR already set\n");
 		ret = -EBUSY;
 		goto out;
@@ -2759,27 +2769,27 @@ static int binder_ioctl_set_ctx_mgr(struct file *filp)
 	ret = security_binder_set_context_mgr(proc->tsk);
 	if (ret < 0)
 		goto out;
-	if (uid_valid(binder_context_mgr_uid)) {
-		if (!uid_eq(binder_context_mgr_uid, curr_euid)) {
+	if (uid_valid(context->binder_context_mgr_uid)) {
+		if (!uid_eq(context->binder_context_mgr_uid, curr_euid)) {
 			pr_err("BINDER_SET_CONTEXT_MGR bad uid %d != %d\n",
 			       from_kuid(&init_user_ns, curr_euid),
 			       from_kuid(&init_user_ns,
-					binder_context_mgr_uid));
+					 context->binder_context_mgr_uid));
 			ret = -EPERM;
 			goto out;
 		}
 	} else {
-		binder_context_mgr_uid = curr_euid;
+		context->binder_context_mgr_uid = curr_euid;
 	}
-	binder_context_mgr_node = binder_new_node(proc, 0, 0);
-	if (binder_context_mgr_node == NULL) {
+	context->binder_context_mgr_node = binder_new_node(proc, 0, 0);
+	if (!context->binder_context_mgr_node) {
 		ret = -ENOMEM;
 		goto out;
 	}
-	binder_context_mgr_node->local_weak_refs++;
-	binder_context_mgr_node->local_strong_refs++;
-	binder_context_mgr_node->has_strong_ref = 1;
-	binder_context_mgr_node->has_weak_ref = 1;
+	context->binder_context_mgr_node->local_weak_refs++;
+	context->binder_context_mgr_node->local_strong_refs++;
+	context->binder_context_mgr_node->has_strong_ref = 1;
+	context->binder_context_mgr_node->has_weak_ref = 1;
 out:
 	return ret;
 }
@@ -3005,8 +3015,9 @@ static int binder_open(struct inode *nodp, struct file *filp)
 	proc = kzalloc(sizeof(*proc), GFP_KERNEL);
 	if (proc == NULL)
 		return -ENOMEM;
-	get_task_struct(current);
-	proc->tsk = current;
+	get_task_struct(current->group_leader);
+	proc->tsk = current->group_leader;
+	proc->context = &global_context;
 	INIT_LIST_HEAD(&proc->todo);
 	init_waitqueue_head(&proc->wait);
 	proc->default_priority = task_nice(current);
