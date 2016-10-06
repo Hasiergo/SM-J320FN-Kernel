@@ -672,8 +672,9 @@ static void ESD_work_func(struct work_struct *work)
 	}
 
 	if(0 != dev->enable){
-		pr_debug("[LCD] sprdfb: reschedule ESD workqueue!\n");
-		schedule_delayed_work(&dev->ESD_work, msecs_to_jiffies(dev->ESD_timeout_val));
+		pr_debug("sprdfb: reschedule ESD workqueue!\n");
+		queue_delayed_work(system_power_efficient_wq,
+                        &dev->ESD_work, msecs_to_jiffies(dev->ESD_timeout_val));
 		dev->ESD_work_start = true;
 	}else{
 		printk("[LCD] sprdfb: DON't reschedule ESD workqueue since device not avialbe!!\n");
@@ -926,7 +927,8 @@ static int sprdfb_probe(struct platform_device *pdev)
 		dev->panel->esd_info->recover = ESD_recover;
 		dev_global = dev;
 		INIT_DELAYED_WORK(&enable_esd_work, esd_enable_func);
-		schedule_delayed_work(&enable_esd_work, msecs_to_jiffies(20000));
+		queue_delayed_work(system_power_efficient_wq,
+                        &enable_esd_work, msecs_to_jiffies(20000));
 	}
 #endif
 	return 0;
