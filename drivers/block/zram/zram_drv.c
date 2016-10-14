@@ -46,7 +46,7 @@ static DEFINE_MUTEX(zram_index_mutex);
 static const char *default_compressor = "lz4hc";
 
 /* Module params (documentation at end) */
-static unsigned int num_devices = 1;
+static unsigned int num_devices = NR_CPUS;
 
 #define ZRAM_ATTR_RO(name)						\
 static ssize_t name##_show(struct device *d,		\
