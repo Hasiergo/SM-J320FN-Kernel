@@ -211,10 +211,12 @@ static struct binder_transaction_log_entry *binder_transaction_log_add(
 struct binder_context {
 	struct binder_node *binder_context_mgr_node;
 	kuid_t binder_context_mgr_uid;
+	const char *name;
 };
 
 static struct binder_context global_context = {
 	.binder_context_mgr_uid = INVALID_UID,
+	.name = "binder",
 };
 
 struct binder_work {
@@ -3673,22 +3675,17 @@ static int binder_transactions_show(struct seq_file *m, void *unused)
 static int binder_proc_show(struct seq_file *m, void *unused)
 {
 	struct binder_proc *itr;
-	struct binder_proc *proc = m->private;
+	int pid = (unsigned long)m->private;
 	int do_lock = !binder_debug_no_lock;
-	bool valid_proc = false;
 
 	if (do_lock)
 		binder_lock(__func__);
 
 	hlist_for_each_entry(itr, &binder_procs, proc_node) {
-		if (itr == proc) {
-			valid_proc = true;
-			break;
+		if (itr->pid == pid) {
+			seq_puts(m, "binder proc state:\n");
+			print_binder_proc(m, itr, 1);
 		}
-	}
-	if (valid_proc) {
-		seq_puts(m, "binder proc state:\n");
-		print_binder_proc(m, proc, 1);
 	}
 	if (do_lock)
 		binder_unlock(__func__);
