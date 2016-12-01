@@ -306,8 +306,6 @@ static void __save_error_info(struct super_block *sb, const char *func,
 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
 
 	EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
-	if (bdev_read_only(sb->s_bdev))
-		return;
 	es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
 	es->s_last_error_time = cpu_to_le32(get_seconds());
 	strncpy(es->s_last_error_func, func, sizeof(es->s_last_error_func));
@@ -406,13 +404,9 @@ static void ext4_handle_error(struct super_block *sb, char* buf)
 		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
 		sb->s_flags |= MS_RDONLY;
 	}
-	if (test_opt(sb, ERRORS_PANIC)) {
-		if (EXT4_SB(sb)->s_journal &&
-		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_REC_ERR))
-			return;
+	if (test_opt(sb, ERRORS_PANIC))
 		panic("EXT4-fs (device %s): panic! %s\n",
 			sb->s_id, buf?buf:"no message");
-	}
 }
 
 void __ext4_error(struct super_block *sb, const char *function,
@@ -623,12 +617,8 @@ void __ext4_abort(struct super_block *sb, const char *function,
 			jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
 		save_error_info(sb, function, line);
 	}
-	if (test_opt(sb, ERRORS_PANIC)) {
-		if (EXT4_SB(sb)->s_journal &&
-		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_REC_ERR))
-			return;
+	if (test_opt(sb, ERRORS_PANIC))
 		panic("EXT4-fs panic from previous error\n");
-	}
 }
 
 void ext4_msg(struct super_block *sb, const char *prefix, const char *fmt, ...)
@@ -805,6 +795,7 @@ static void ext4_put_super(struct super_block *sb)
 {
 	struct ext4_sb_info *sbi = EXT4_SB(sb);
 	struct ext4_super_block *es = sbi->s_es;
+	int aborted = 0;
 	int i, err;
 
 	ext4_unregister_li_request(sb);
@@ -814,9 +805,10 @@ static void ext4_put_super(struct super_block *sb)
 	destroy_workqueue(sbi->dio_unwritten_wq);
 
 	if (sbi->s_journal) {
+		aborted = is_journal_aborted(sbi->s_journal);
 		err = jbd2_journal_destroy(sbi->s_journal);
 		sbi->s_journal = NULL;
-		if (err < 0)
+		if ((err < 0) && !aborted)
 			ext4_abort(sb, "Couldn't clean up the journal");
 	}
 
@@ -827,7 +819,7 @@ static void ext4_put_super(struct super_block *sb)
 	ext4_ext_release(sb);
 	ext4_xattr_put_super(sb);
 
-	if (!(sb->s_flags & MS_RDONLY)) {
+	if (!(sb->s_flags & MS_RDONLY) && !aborted) {
 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
 		es->s_state = cpu_to_le16(sbi->s_mount_state);
 	}
@@ -3346,7 +3338,8 @@ static ext4_fsblk_t ext4_calculate_resv_clusters(struct super_block *sb)
 			EXT4_SB(sb)->s_cluster_bits;
 
 	do_div(resv_clusters, 50);
-	resv_clusters = min_t(ext4_fsblk_t, resv_clusters, 4096);
+	/* Do not reserve clusters */
+	resv_clusters = min_t(ext4_fsblk_t, resv_clusters, 0);
 
 	return resv_clusters;
 }
@@ -3850,8 +3843,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
 		   EXT4_DESC_PER_BLOCK(sb);
-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
-		if (le32_to_cpu(es->s_first_meta_bg) >= db_count) {
+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG)) {
+		if (le32_to_cpu(es->s_first_meta_bg) > db_count) {
+
 			ext4_msg(sb, KERN_WARNING,
 				 "first meta block group too large: %u "
 				 "(group descriptor block count %u)",
@@ -3974,7 +3968,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 	 */
 	if (!test_opt(sb, NOLOAD) &&
 	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL)) {
-		if (ext4_load_journal(sb, es, journal_devnum))
+		err = ext4_load_journal(sb, es, journal_devnum);
+		if (err)
 			goto failed_mount3;
 	} else if (test_opt(sb, NOLOAD) && !(sb->s_flags & MS_RDONLY) &&
 	      EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER)) {
@@ -4781,8 +4776,6 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
 	int i, j;
 #endif
 	char *orig_data = kstrdup(data, GFP_KERNEL);
-
-	sync_filesystem(sb);
 
 	/* Store the original options */
 	old_sb_flags = sb->s_flags;
