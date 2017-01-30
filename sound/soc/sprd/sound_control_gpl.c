@@ -26,16 +26,13 @@
 extern struct snd_kcontrol_new *gpl_faux_snd_controls_ptr;
 
 #define SOUND_CONTROL_MAJOR_VERSION	2
-#define SOUND_CONTROL_MINOR_VERSION	1
+#define SOUND_CONTROL_MINOR_VERSION	0
 
 #define CAMCORDER_MIC_OFFSET    20
 #define HANDSET_MIC_OFFSET      21
 #define SPEAKER_OFFSET          10
 #define HEADPHONE_L_OFFSET      8
 #define HEADPHONE_R_OFFSET      9
-
-#define HEADPHONE_PA_L_OFFSET	6
-#define HEADPHONE_PA_R_OFFSET	7
 
 static ssize_t cam_mic_gain_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
@@ -248,19 +245,13 @@ static struct kobj_attribute speaker_gain_attribute =
 		speaker_gain_show,
 		speaker_gain_store);
 
-static struct kobj_attribute headphone_gain_attribute =
+static struct kobj_attribute headphone_gain_attribute = 
 	__ATTR(gpl_headphone_gain,
 		0666,
 		headphone_gain_show,
 		headphone_gain_store);
 
-static struct kobj_attribute headphone_pa_gain_attribute =
-	__ATTR(gpl_headphone_pa_gain,
-		0666,
-		headphone_pa_gain_show,
-		headphone_pa_gain_store);
-
-static struct kobj_attribute sound_control_version_attribute =
+static struct kobj_attribute sound_control_version_attribute = 
 	__ATTR(gpl_sound_control_version,
 		0444,
 		sound_control_version_show, NULL);
@@ -271,7 +262,6 @@ static struct attribute *sound_control_attrs[] =
 		&mic_gain_attribute.attr,
 		&speaker_gain_attribute.attr,
 		&headphone_gain_attribute.attr,
-		&headphone_pa_gain_attribute.attr,
 		&sound_control_version_attribute.attr,
 		NULL,
 	};
