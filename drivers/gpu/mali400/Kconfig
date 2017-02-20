@@ -13,6 +13,7 @@ choice
 	depends on MALI400
 	prompt "Select MALI VER"
 <<<<<<< HEAD
+<<<<<<< HEAD
 	default MALI_VER_R4P1
 	config MALI_VER_R4P1
 	  bool "Mali400 Version R4P1"
@@ -31,6 +32,16 @@ source "drivers/gpu/mali400/r4p1/Kconfig"
 if MALI_VER_R4P0
 source "drivers/gpu/mali400/r4p0/Kconfig"
 >>>>>>> 654f5ef909d2... drivers: gpu: Integrate mali GPU driver
+=======
+	default MALI_VER_R4P1
+	config MALI_VER_R4P1
+	  bool "Mali400 Version R4P1"
+	  help
+	    Choose this option to select DDK version.
+
+if MALI_VER_R4P1
+source "drivers/gpu/mali400/r4p1/Kconfig"
+>>>>>>> 8b10342c95c8... mali: We're actually using version r4p1-01rel0 instead of r4p0
 endif
 
 endchoice
