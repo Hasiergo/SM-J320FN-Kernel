@@ -45,12 +45,6 @@
 #include "sd_ops.h"
 #include "sdio_ops.h"
 
-#ifdef CONFIG_MMC_SUPPORT_STLOG
-#include <linux/stlog.h>
-#else
-#define ST_LOG(fmt,...)
-#endif
-
 /* If the device is not responding */
 #define MMC_CORE_TIMEOUT_MS	(10 * 60 * 1000) /* 10 minute timeout */
 
@@ -67,24 +61,9 @@ static const unsigned freqs[] = { 400000, 300000, 200000, 100000 };
  * Enabling software CRCs on the data blocks can be a significant (30%)
  * performance cost, and for other reasons may not always be desired.
  * So we allow it it to be disabled.
- *
- * SysFs interface :
- *
- * /sys/module/mmc_core/parameters/crc
- *
- * Enable / Disable CRC
- *
- * echo N > /sys/module/mmc_core/parameters/crc (Disabled) or
- * echo 0 > /sys/module/mmc_core/parameters/crc (Disabled)
- *
- * echo Y > /sys/module/mmc_core/parameters/crc (Enabled) or
- * echo 1 > /sys/module/mmc_core/parameters/crc (Enabled)
-*/
-
-int use_spi_crc = 0;
-EXPORT_SYMBOL(use_spi_crc);
-module_param_named(crc, use_spi_crc, int, 0644);
-MODULE_PARM_DESC(crc, "Enable/disable CRC");
+ */
+bool use_spi_crc = 1;
+module_param(use_spi_crc, bool, 0);
 
 /*
  * We normally treat cards as removed during suspend if they are not
@@ -2375,7 +2354,6 @@ int _mmc_detect_card_removed(struct mmc_host *host)
 	if (ret) {
 		mmc_card_set_removed(host->card);
 		pr_debug("%s: card remove detected\n", mmc_hostname(host));
-		ST_LOG("<%s> %s: card remove detected\n", __func__,mmc_hostname(host));
 	}
 
 	return ret;
@@ -2475,8 +2453,6 @@ void mmc_rescan(struct work_struct *work)
 		mmc_release_host(host);
 		goto out;
 	}
-
-	ST_LOG("<%s> %s insertion detected",__func__,host->class_dev.kobj.name);
 
 	mmc_claim_host(host);
 	for (i = 0; i < ARRAY_SIZE(freqs); i++) {
