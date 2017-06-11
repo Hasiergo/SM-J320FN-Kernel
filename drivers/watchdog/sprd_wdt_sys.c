@@ -431,7 +431,11 @@ static int sprd_wdt_probe(struct platform_device *pdev)
 		BUG();
 	}
 #else
+<<<<<<< HEAD
 	ret = fiq_glue_register_handler(&ca7_wdg_fiq_glue_handler);
+=======
+	ret = fiq_glue_register_handler(&sprd_wdg_fiq_glue_handler);
+>>>>>>> 9cb08fd4f879... fix wifi
 	if (ret == 0)
 		enable_fiq(irq_num);
 	else

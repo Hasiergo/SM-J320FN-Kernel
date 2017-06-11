@@ -650,7 +650,11 @@ static GSP_CAPABILITY_T* GSP_Config_Capability(void)
 		#else
 			s_gsp_capability.buf_type_support=GSP_Get_Addr_Type();
 		#endif
+<<<<<<< HEAD
 		#ifdef CONFIG_GSP_THREE_OVERLAY
+=======
+                #ifdef CONFIG_GSP_THREE_OVERLAY
+>>>>>>> 9cb08fd4f879... fix wifi
 			s_gsp_capability.max_layer_cnt = 3;
 		#endif
         s_gsp_capability.yuv_xywh_even = 1;
