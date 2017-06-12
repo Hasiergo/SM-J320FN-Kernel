@@ -483,7 +483,7 @@ static int __init sci_wdt_init(void)
 	boot_status = 0;
 	pr_info("SC8830 Watchdog: userspace watchdog feeder\n");
 
-	 platform_driver_register(&sprd_wdt_driver);
+	platform_driver_register(&sprd_wdt_driver);
 
 	return 0;
 wdt_out:
