@@ -27,7 +27,7 @@ MALI_ENABLE_CPU_CYCLES ?= 0
 ccflags-y += -I$(src)/linux/license/gpl
 
 ifeq ($(USING_GPU_UTILIZATION),1)
-    ifeq ($(USING_DVFS),y)
+    ifeq ($(CONFIG_MALI_DVFS),y)
         $(error USING_GPU_UTILIZATION conflict with USING_DVFS you can read the Integration Guide to choose which one do you need)
     endif
 endif
@@ -67,7 +67,7 @@ export EXTRA_DEFINES += -DCONFIG_MALI_DT
 
 ifeq ($(CONFIG_MALI_PLATFORM_SC8830),y)
 	export MALI_PLATFORM := sc8830
-        export TARGET_PLATFORM := sc8830
+	export TARGET_PLATFORM := sc8830
 endif
 
 EXTRA_DEFINES += -DCONFIG_MALI400=1
@@ -86,7 +86,7 @@ mali-y += \
 	linux/mali_osk_notification.o \
 	linux/mali_osk_time.o \
 	linux/mali_osk_timers.o \
-        linux/mali_osk_bitmap.o
+	linux/mali_osk_bitmap.o
 
 mali-y += linux/mali_memory.o linux/mali_memory_os_alloc.o
 mali-y += linux/mali_memory_external.o
