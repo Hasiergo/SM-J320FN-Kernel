@@ -49,8 +49,6 @@
 #include "mali_executor.h"
 #define GPU_GLITCH_FREE_DFS		0
 
-#define UP_THRESHOLD			9/10
-
 #define __SPRD_GPU_TIMEOUT      (3*1000)
 
 struct gpu_freq_info {
@@ -101,6 +99,8 @@ extern int gpu_boost_level;
 extern int gpu_boost_sf_level;
 
 extern int gpu_freq_cur;
+extern int utilization;
+extern int up_threshold;
 extern int gpu_freq_min_limit;
 extern int gpu_freq_max_limit;
 extern char* gpu_freq_list;
@@ -305,6 +305,58 @@ int mali_platform_device_init(struct platform_device *pdev)
 		MALI_DEBUG_ASSERT(gpu_dfs_ctx.gpu_clk_src[i]);
 	}
 
+#ifdef GPU_OVER_FREQ_512M
+	of_property_read_u32(np, "freq-list-len-overclk", &gpu_dfs_ctx.freq_list_len);
+	gpu_dfs_ctx.freq_list = vmalloc(sizeof(struct gpu_freq_info) * gpu_dfs_ctx.freq_list_len);
+	MALI_DEBUG_ASSERT(gpu_dfs_ctx.freq_list);
+
+	for(i=0; i<gpu_dfs_ctx.freq_list_len; i++)
+	{
+		int clk;
+		of_property_read_u32_index(np, "freq-lists-overclk", 3*i+1, &clk);
+		gpu_dfs_ctx.freq_list[i].clk_src = gpu_dfs_ctx.gpu_clk_src[clk-2];
+		MALI_DEBUG_ASSERT(gpu_dfs_ctx.freq_list[i].clk_src);
+		of_property_read_u32_index(np, "freq-lists-overclk", 3*i,   &gpu_dfs_ctx.freq_list[i].freq);
+		of_property_read_u32_index(np, "freq-lists-overclk", 3*i+2, &gpu_dfs_ctx.freq_list[i].div);
+		gpu_dfs_ctx.freq_list[i].up_threshold =  gpu_dfs_ctx.freq_list[i].freq * up_threshold / 100;
+	}
+
+	of_property_read_u32(np, "freq-default-overclk", &i);
+	gpu_dfs_ctx.freq_default = &gpu_dfs_ctx.freq_list[i];
+	MALI_DEBUG_ASSERT(gpu_dfs_ctx.freq_default);
+
+	of_property_read_u32(np, "freq-9-overclk", &i);
+	gpu_dfs_ctx.freq_9 = &gpu_dfs_ctx.freq_list[i];
+	MALI_DEBUG_ASSERT(gpu_dfs_ctx.freq_9);
+
+	of_property_read_u32(np, "freq-8-overclk", &i);
+	gpu_dfs_ctx.freq_8 = &gpu_dfs_ctx.freq_list[i];
+	MALI_DEBUG_ASSERT(gpu_dfs_ctx.freq_8);
+
+	of_property_read_u32(np, "freq-7-overclk", &i);
+	gpu_dfs_ctx.freq_7 = &gpu_dfs_ctx.freq_list[i];
+	MALI_DEBUG_ASSERT(gpu_dfs_ctx.freq_7);
+
+	of_property_read_u32(np, "freq-5-overclk", &i);
+	gpu_dfs_ctx.freq_5 = &gpu_dfs_ctx.freq_list[i];
+	MALI_DEBUG_ASSERT(gpu_dfs_ctx.freq_5);
+
+	of_property_read_u32(np, "freq-range-max-overclk", &i);
+	gpu_dfs_ctx.freq_range_max = &gpu_dfs_ctx.freq_list[i];
+	MALI_DEBUG_ASSERT(gpu_dfs_ctx.freq_range_max);
+
+	of_property_read_u32(np, "freq-range-min-overclk", &i);
+	gpu_dfs_ctx.freq_range_min = &gpu_dfs_ctx.freq_list[i];
+	MALI_DEBUG_ASSERT(gpu_dfs_ctx.freq_range_min);
+
+	of_property_read_u32(np, "freq-clk-nb", &i);
+	gpu_dfs_ctx.freq_clk_nb = &gpu_dfs_ctx.freq_list[i];
+	MALI_DEBUG_ASSERT(gpu_dfs_ctx.freq_clk_nb);
+
+	of_property_read_u32(np, "freq-clk-nb-prev", &i);
+	gpu_dfs_ctx.freq_clk_nb_prev = &gpu_dfs_ctx.freq_list[i];
+	MALI_DEBUG_ASSERT(gpu_dfs_ctx.freq_clk_nb_prev);
+#else
 	of_property_read_u32(np, "freq-list-len", &gpu_dfs_ctx.freq_list_len);
 	gpu_dfs_ctx.freq_list = vmalloc(sizeof(struct gpu_freq_info) * gpu_dfs_ctx.freq_list_len);
 	MALI_DEBUG_ASSERT(gpu_dfs_ctx.freq_list);
@@ -317,7 +369,7 @@ int mali_platform_device_init(struct platform_device *pdev)
 		MALI_DEBUG_ASSERT(gpu_dfs_ctx.freq_list[i].clk_src);
 		of_property_read_u32_index(np, "freq-lists", 3*i,   &gpu_dfs_ctx.freq_list[i].freq);
 		of_property_read_u32_index(np, "freq-lists", 3*i+2, &gpu_dfs_ctx.freq_list[i].div);
-		gpu_dfs_ctx.freq_list[i].up_threshold =  gpu_dfs_ctx.freq_list[i].freq * UP_THRESHOLD;
+		gpu_dfs_ctx.freq_list[i].up_threshold =  gpu_dfs_ctx.freq_list[i].freq * up_threshold / 100;
 	}
 
 	of_property_read_u32(np, "freq-default", &i);
@@ -352,6 +404,9 @@ int mali_platform_device_init(struct platform_device *pdev)
 	gpu_dfs_ctx.freq_min = gpu_dfs_ctx.freq_range_min;
 	gpu_dfs_ctx.freq_cur = gpu_dfs_ctx.freq_default;
 #endif
+
+	gpu_freq_max_limit = gpu_dfs_ctx.freq_list[gpu_dfs_ctx.freq_list_len - 1].freq;
+	gpu_freq_min_limit = gpu_dfs_ctx.freq_list[0].freq;
 
 	sci_glb_write(REG_PMU_APB_PD_GPU_TOP_CFG,BITS_PD_GPU_TOP_PWR_ON_DLY(1),0xff0000);
 	sci_glb_write(REG_PMU_APB_PD_GPU_TOP_CFG,BITS_PD_GPU_TOP_PWR_ON_SEQ_DLY(1),0xff00);
@@ -557,10 +612,11 @@ void mali_platform_utilization(struct mali_gpu_utilization_data *data)
 #ifndef CONFIG_SCX35L64BIT_FPGA
 	int max_index = -1, min_index = -1;
 
-	gpu_dfs_ctx.cur_load = data->utilization_gpu;
+	if (gpu_dfs_ctx.cur_load > 0) {
+		utilization = (gpu_dfs_ctx.cur_load * 100) / 256;
+	}
 
-	MALI_DEBUG_PRINT(3,("GPU_DFS mali_utilization  gpu:%d  gp:%d pp:%d\n",data->utilization_gpu,data->utilization_gp,data->utilization_pp));
-	MALI_DEBUG_PRINT(3,("GPU_DFS gpu_boost_level:%d gpu_boost_sf_level:%d\n",gpu_boost_level,gpu_boost_sf_level));
+		MALI_DEBUG_PRINT(3,("GPU_DFS gpu_boost_level:%d gpu_boost_sf_level:%d\n",gpu_boost_sf_level));
 
 	switch(gpu_boost_level)
 	{
@@ -602,8 +658,7 @@ void mali_platform_utilization(struct mali_gpu_utilization_data *data)
 
 	//limit min freq
 	min_index = freq_search(gpu_dfs_ctx.freq_list, gpu_dfs_ctx.freq_list_len, gpu_freq_min_limit);
-	if ((0 <= min_index) &&
-		(gpu_dfs_ctx.freq_min->freq < gpu_dfs_ctx.freq_list[min_index].freq))
+	if ((0 <= min_index) 
 	{
 		gpu_dfs_ctx.freq_min = &gpu_dfs_ctx.freq_list[min_index];
 		if (gpu_dfs_ctx.freq_min->freq > gpu_dfs_ctx.freq_max->freq)
@@ -614,8 +669,7 @@ void mali_platform_utilization(struct mali_gpu_utilization_data *data)
 
 	//limit max freq
 	max_index = freq_search(gpu_dfs_ctx.freq_list, gpu_dfs_ctx.freq_list_len, gpu_freq_max_limit);
-	if ((0 <= max_index) &&
-		(gpu_dfs_ctx.freq_max->freq > gpu_dfs_ctx.freq_list[max_index].freq))
+	if ((0 <= max_index) 
 	{
 		gpu_dfs_ctx.freq_max = &gpu_dfs_ctx.freq_list[max_index];
 		if (gpu_dfs_ctx.freq_max->freq < gpu_dfs_ctx.freq_min->freq)
@@ -624,14 +678,91 @@ void mali_platform_utilization(struct mali_gpu_utilization_data *data)
 		}
 	}
 
-	// Instantly switch to maximum clock speed 
-	gpu_dfs_ctx.freq_next = gpu_dfs_ctx.freq_max;
-	MALI_DEBUG_PRINT(3,("GPU_DFS util %3d; next_freq %6d\n", gpu_dfs_ctx.cur_load, gpu_dfs_ctx.freq_next->freq));
-
-	if(gpu_dfs_ctx.freq_next->freq != gpu_dfs_ctx.freq_cur->freq)
+        if(gpu_dfs_ctx.cur_load >= (256 * up_threshold / 100))
 	{
-		queue_work(gpu_dfs_ctx.gpu_dfs_workqueue, &gpu_dfs_work);
+		gpu_dfs_ctx.freq_next = gpu_dfs_ctx.freq_max;
 	}
+	else
+	{
+		int target_freq = gpu_dfs_ctx.freq_cur->freq * gpu_dfs_ctx.cur_load / 256;
+		gpu_dfs_ctx.freq_next = get_next_freq(gpu_dfs_ctx.freq_min, gpu_dfs_ctx.freq_max, target_freq);
+	}
+
+#ifdef GPU_OVER_FREQ_512M
+		if ((gpu_dfs_ctx.is_clk_change) &&
+			(gpu_dfs_ctx.freq_next->freq == gpu_dfs_ctx.freq_clk_nb->freq))
+			{
+				gpu_dfs_ctx.freq_next = gpu_dfs_ctx.freq_clk_nb_prev;
+			}
+#endif
+	}
+
+	MALI_DEBUG_PRINT(3,("GPU_DFS is_rate_notify %3d is_clk_change %3d cur_freq %6d-> next_freq %6d\n",
+		is_rate_notify,gpu_dfs_ctx.is_clk_change,gpu_dfs_ctx.freq_cur->freq, gpu_dfs_ctx.freq_next->freq));
+}
+
+static void gpu_dfs_change(bool is_rate_notify, bool is_clk_change)
+{
+	down(gpu_dfs_ctx.sem);
+
+	//set next freq
+	gpu_set_freq(is_rate_notify,is_clk_change);
+
+	if(gpu_dfs_ctx.gpu_power_on && gpu_dfs_ctx.gpu_clock_on)
+	{
+#if GPU_GLITCH_FREE_DFS
+		if(gpu_dfs_ctx.freq_next != gpu_dfs_ctx.freq_cur)
+		{
+			if(gpu_dfs_ctx.freq_next->clk_src != gpu_dfs_ctx.freq_cur->clk_src)
+			{
+				clk_set_parent(gpu_dfs_ctx.gpu_clock, gpu_dfs_ctx.freq_next->clk_src);
+			}
+			if(gpu_dfs_ctx.freq_next->div != gpu_dfs_ctx.freq_cur->div)
+			{
+				mali_set_div(gpu_dfs_ctx.freq_next->div);
+			}
+
+			gpu_dfs_ctx.freq_cur = gpu_dfs_ctx.freq_next;
+
+			gpu_freq_cur = gpu_dfs_ctx.freq_cur->freq;
+
+		}
+#else
+		if(gpu_dfs_ctx.freq_next != gpu_dfs_ctx.freq_cur)
+		{
+			mali_dev_pause();
+
+			clk_disable_unprepare(gpu_dfs_ctx.gpu_clock);
+			if(gpu_dfs_ctx.freq_next->clk_src != gpu_dfs_ctx.freq_cur->clk_src)
+			{
+				clk_set_parent(gpu_dfs_ctx.gpu_clock, gpu_dfs_ctx.freq_next->clk_src);
+			}
+			if(gpu_dfs_ctx.freq_next->div != gpu_dfs_ctx.freq_cur->div)
+			{
+				mali_set_div(gpu_dfs_ctx.freq_next->div);
+			}
+
+			gpu_dfs_ctx.freq_cur = gpu_dfs_ctx.freq_next;
+
+			gpu_freq_cur = gpu_dfs_ctx.freq_cur->freq;
+
+			clk_prepare_enable(gpu_dfs_ctx.gpu_clock);
+			udelay(100);
+
+			mali_dev_resume();
+		}
+#endif
+	}
+
+	up(gpu_dfs_ctx.sem);
+}
+
+void mali_platform_utilization(struct mali_gpu_utilization_data *data)
+{
+	MALI_DEBUG_PRINT(3,("GPU_DFS mali_utilization  gpu:%d  gp:%d pp:%d\n",data->utilization_gpu,data->utilization_gp,data->utilization_pp));
+
+	gpu_dfs_ctx.cur_load = data->utilization_gpu;
+	queue_work(gpu_dfs_ctx.gpu_dfs_workqueue, &gpu_dfs_work);
 #endif
 }
 
