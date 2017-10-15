@@ -936,9 +936,6 @@ static void gsp_early_suspend(struct early_suspend* es)
     printk("%s%d\n",__func__,__LINE__);
 
     gspCtx = container_of(es, gsp_context_t, earlysuspend);
-    if (NULL == gspCtx) {
-        return;
-    }
 
     gspCtx->suspend_resume_flag = 1;
 
@@ -961,9 +958,6 @@ static void gsp_late_resume(struct early_suspend* es)
     printk("%s%d\n",__func__,__LINE__);
 
     gspCtx = container_of(es, gsp_context_t, earlysuspend);
-    if (NULL == gspCtx) {
-        return;
-    }
 
     gspCtx->gsp_coef_force_calc = 1;
     //GSP_module_enable(gspCtx);//
