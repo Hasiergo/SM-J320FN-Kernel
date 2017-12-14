@@ -38,30 +38,14 @@
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 
-#ifdef CONFIG_USB_HOST_NOTIFY
-#include <linux/usb_notify.h>
-#endif
-extern int vcell_val;
-extern int curr_val;
-extern int soc_val;
-extern int lpcharge;
-
-#if defined(CONFIG_MACH_GRANDNEOVE3G) || defined(CONFIG_MACH_J13G)
-extern unsigned int system_rev ;
-extern int sec_vf_adc_current_check(void);
-#endif
-
-#define SIOP_INPUT_LIMIT_CURRENT 500
-
-#ifdef CONFIG_THUNDERCHARGE_CONTROL
-#include "thundercharge_control.h"
+#ifdef CONFIG_FORCE_FAST_CHARGE
+#include <linux/fast_charging.h>
 #endif
 
 extern int sec_chg_dt_init(struct device_node *np,
 			 struct device *dev,
 			 sec_battery_platform_data_t *pdata);
-extern int led_state_charger;
-int otg_enable_flag;
+extern led_state_charger;
 
 static enum power_supply_property sec_charger_props[] = {
         POWER_SUPPLY_PROP_STATUS,
@@ -72,11 +56,6 @@ static enum power_supply_property sec_charger_props[] = {
         POWER_SUPPLY_PROP_CURRENT_MAX,
         POWER_SUPPLY_PROP_CURRENT_AVG,
         POWER_SUPPLY_PROP_CURRENT_NOW,
-#if defined(CONFIG_BATTERY_SWELLING)
-	POWER_SUPPLY_PROP_VOLTAGE_MAX,
-#endif
-	POWER_SUPPLY_PROP_CHARGE_OTG_CONTROL,
-	POWER_SUPPLY_PROP_CHARGING_ENABLED,
 };
 
 static void SM5701_charger_initialize(struct SM5701_charger_data *charger);
@@ -99,8 +78,8 @@ static int SM5701_get_charging_status(struct SM5701_charger_data *charger)
 	int status = POWER_SUPPLY_STATUS_UNKNOWN;
 	int nCHG;
 	u8 stat2, chg_en, cln;
-#if defined(CONFIG_MACH_VIVALTO5MVE3G) || defined(CONFIG_MACH_YOUNG2VE3G)
-	int vol_thresh,curr_thresh ;
+#if defined(CONFIG_MACH_CORE3_W)
+	union power_supply_propval vol_val, soc_val, curr_val;
 #endif
 
 	SM5701_reg_read(charger->SM5701->i2c, SM5701_STATUS2, &stat2);
@@ -118,12 +97,6 @@ static int SM5701_get_charging_status(struct SM5701_charger_data *charger)
 		status = POWER_SUPPLY_STATUS_FULL;
 		charger->is_fullcharged = true;
 		pr_info("%s : Status, Power Supply Full \n", __func__);
-#if defined(CONFIG_MACH_CORE3_W) || defined(CONFIG_MACH_GRANDNEOVE3G)
-		if (soc_val < 94) {
-			pr_info("%s : SPRD FG IC error : %d)\n", __func__, soc_val);
-			charger->pdata->recharge_condition_vcell = 4300;
-		}
-#endif
 	} else {
 		if (nCHG)
 			status = POWER_SUPPLY_STATUS_DISCHARGING;
@@ -131,39 +104,24 @@ static int SM5701_get_charging_status(struct SM5701_charger_data *charger)
 			status = POWER_SUPPLY_STATUS_CHARGING;
 	}
 
-
-
 #if defined(CONFIG_MACH_CORE3_W)
-	vol_thresh=4380;
-	curr_thresh=160;
-#elif defined(CONFIG_MACH_VIVALTO5MVE3G)
-	vol_thresh=4330;
-	curr_thresh=120;
-#elif defined(CONFIG_MACH_YOUNG2VE3G)
-	vol_thresh=4330;
-	curr_thresh=120;
-#endif
+	psy_do_property("sec-fuelgauge", get,
+		POWER_SUPPLY_PROP_VOLTAGE_NOW, vol_val);
+	psy_do_property("sec-fuelgauge", get,
+		POWER_SUPPLY_PROP_CAPACITY, soc_val);
+	psy_do_property("sec-fuelgauge", get,
+		POWER_SUPPLY_PROP_CURRENT_NOW, curr_val);
 
- #if defined(CONFIG_MACH_VIVALTO5MVE3G) || defined(CONFIG_MACH_YOUNG2VE3G)
- 	/* workaround for eoc chip bug */
-		if ((vcell_val >= vol_thresh) && (soc_val == 100) &&
-		(curr_val < curr_thresh) && (!nCHG)) {
-		status = POWER_SUPPLY_STATUS_FULL;
-		charger->is_fullcharged = true;
-		pr_info("%s : topoff error occur, forced change to full status:%dV, %d%, %dmA\n",
-			__func__, vcell_val, soc_val, curr_val);
-	}
-#endif
-#if defined(CONFIG_MACH_CORE3_W)
 	/* workaround for eoc chip bug */
-	if ((vcell_val >= 4380) && (soc_val == 100) &&
-		(curr_val < 160) && (!nCHG)) {
+	if ((vol_val.intval >= 4380) && (soc_val.intval == 100) &&
+		(curr_val.intval < 160) && (!nCHG)) {
 		status = POWER_SUPPLY_STATUS_FULL;
 		charger->is_fullcharged = true;
 		pr_info("%s : topoff error occur, forced change to full status:%dV, %d%, %dmA\n",
-			__func__, vcell_val, soc_val, curr_val);
+			__func__, vol_val.intval, soc_val.intval, curr_val.intval);
 	}
 #endif
+
 	return (int)status;
 }
 
@@ -184,9 +142,9 @@ static int SM5701_get_charging_health(struct SM5701_charger_data *charger)
 	mask = charger->dev_id < 3 ? OP_MODE_CHG_ON : OP_MODE_CHG_ON_REV3;
 	chg_en &= ~mask;
 
-	if ((stat1 & SM5701_STATUS1_VBUSOVP) || (cln & SM5701_INT1_VBUSOVP)) {
+	if (stat1 & SM5701_STATUS1_VBUSOVP) {
 		health = POWER_SUPPLY_HEALTH_OVERVOLTAGE;
-	} else if ((stat1 & SM5701_STATUS1_VBUSUVLO) || (cln & SM5701_INT1_VBUSUVLO)) {
+	} else if (stat1 & SM5701_STATUS1_VBUSUVLO) {
 		if (charger->cable_type != POWER_SUPPLY_TYPE_BATTERY) {
 			health = POWER_SUPPLY_HEALTH_UNDERVOLTAGE;
 		}
@@ -194,14 +152,14 @@ static int SM5701_get_charging_health(struct SM5701_charger_data *charger)
 		chg_en |= mask;
 		health = POWER_SUPPLY_HEALTH_GOOD;
 	}
-/* disable vbus irq charger gpio control
+
 	if (charger->dev_id != 4) {
 		SM5701_reg_write(charger->SM5701->i2c, SM5701_CNTL, chg_en);
 				pr_info("%s: SM5701 operation control by vbus irq!! \n", __func__);
 		SM5701_reg_read(charger->SM5701->i2c, SM5701_CNTL, &chg_en);
 				pr_info("%s : CNTL register (0x09) : 0x%02x\n", __func__, chg_en);
 	}
-*/
+
 	return (int)health;
 }
 
@@ -241,19 +199,8 @@ static u8 SM5701_set_batreg_voltage(
 	return data;
 }
 
-static u8 sm5701_get_float_voltage(struct SM5701_charger_data *charger)
-{
-	u8 data = 0;
-
-	SM5701_reg_read(charger->SM5701->i2c, SM5701_CHGCNTL3, &data);
-	data &= 0x1F;
-	pr_info("%s: battery cv voltage 0x%x\n", __func__, data);
-
-	return data;
-}
-
 static u8 SM5701_set_vbuslimit_current(
-		struct SM5701_charger_data *charger, int input_current, bool soft_enable)
+		struct SM5701_charger_data *charger, int input_current)
 {
 	u8 data = 0, temp = 0;
 	SM5701_reg_read(charger->SM5701->i2c, SM5701_VBUSCNTL, &data);
@@ -261,19 +208,6 @@ static u8 SM5701_set_vbuslimit_current(
 
 	if (input_current >= 1200)
 		input_current = 1200;
-
-	/* Soft Start Charging */
-	if (((charger->cable_type != POWER_SUPPLY_TYPE_BATTERY) &&
-			!lpcharge) && soft_enable) {
-		data &= ~SM5701_VBUSCNTL_VBUSLIMIT;
-		SM5701_reg_write(charger->SM5701->i2c, SM5701_VBUSCNTL, data);
-		pr_info("%s : SM5701_soft start (Input current limit) : 0x%02x\n",
-		__func__, data);
-	}
-
-#ifdef CONFIG_THUNDERCHARGE_CONTROL
-input_current = custom_ac_current;
-#endif
 
 	if(input_current <= 100)
 		data &= ~SM5701_VBUSCNTL_VBUSLIMIT;
@@ -283,13 +217,10 @@ input_current = custom_ac_current;
 		temp = (input_current/100)-5;
 		data |= temp;
 	}
-	msleep(335);
 
 	SM5701_reg_write(charger->SM5701->i2c, SM5701_VBUSCNTL, data);
 
 	SM5701_reg_read(charger->SM5701->i2c, SM5701_VBUSCNTL, &data);
-        
-        pr_info("thundercharge: pulling ( AC Current ) %d mA\n", input_current);
 	pr_info("%s : SM5701_VBUSCNTL (Input current limit) : 0x%02x\n",
 		__func__, data);
 
@@ -365,56 +296,6 @@ static int SM5701_get_charging_current(
 	return get_current;
 }
 
-static u8 SM5701_otg_control(struct SM5701_charger_data *charger, int enable)
-{
-	u8 otg_en = 0, mask = 0;
-
-	SM5701_reg_read(charger->SM5701->i2c, SM5701_CNTL, &otg_en);
-	mask = 0x02;
-	otg_enable_flag = enable;
-
-	if (enable) {
-		otg_en |= mask;
-		otg_en &= ~0x04;
-		charger->cable_type = POWER_SUPPLY_TYPE_OTG;
-		SM5701_set_bstout(SM5701_BSTOUT_5P0);
-		pr_info("%s: SM5701 otg enable\n", __func__);
-	} else {
-		otg_en &= ~mask;
-		charger->cable_type = POWER_SUPPLY_TYPE_BATTERY;
-		SM5701_set_bstout(SM5701_BSTOUT_4P5);
-		pr_info("%s: SM5701 otg disable\n", __func__);
-	}
-	SM5701_reg_write(charger->SM5701->i2c, SM5701_CNTL, otg_en);
-	SM5701_reg_read(charger->SM5701->i2c, SM5701_CNTL, &otg_en);
-	pr_info("%s: SM5701 otg register : 0x%02x\n", __func__, otg_en);
-
-	return enable;
-}
-
-static void SM5701_otg_over_current_status(struct SM5701_charger_data *charger)
-{
-	u8 stat_2, cln = 0;
-
-#ifdef CONFIG_USB_HOST_NOTIFY
-	struct otg_notify *o_notify;
-	o_notify = get_otg_notify();
-#endif
-	//	Clear interrupt register 2
-	SM5701_reg_read(charger->SM5701->i2c, SM5701_INT2, &cln);
-
-	SM5701_reg_read(charger->SM5701->i2c, SM5701_STATUS2, &stat_2);
-	pr_info("%s : Charging status 2(0x%02x)\n", __func__, stat_2);
-	if ((charger->cable_type == POWER_SUPPLY_TYPE_OTG) &&
-		(stat_2 & 0x10)) {
-		pr_info("%s: otg overcurrent limit\n", __func__);
-#ifdef CONFIG_USB_HOST_NOTIFY
-		send_otg_notify(o_notify, NOTIFY_EVENT_OVERCURRENT,1);
-#endif
-		SM5701_otg_control(charger, 0);
-	}
-}
-
 static u8 SM5701_toggle_charger(struct SM5701_charger_data *charger, int enable)
 {
 	u8 chg_en = 0, mask = 0;
@@ -435,24 +316,9 @@ static u8 SM5701_toggle_charger(struct SM5701_charger_data *charger, int enable)
 			pr_info("%s : CNTL register (0x09) : 0x%02x\n", __func__, chg_en);
 
 		} else {
-			if (otg_enable_flag)
-				SM5701_set_operationmode(SM5701_OPERATIONMODE_OTG_ON_FLASH_ON);
-			else
-				SM5701_set_operationmode(SM5701_OPERATIONMODE_FLASH_ON);
+			 SM5701_set_operationmode(SM5701_OPERATIONMODE_FLASH_ON);
 			pr_info("%s: SM5701 Charger toggled!! - flash on!! \n", __func__);
 		}
-	} else {
-	/* no need to check led status */
-		mask = OP_MODE_CHG_ON_REV3;
-		chg_en &= ~mask;
-
-		if (enable)
-			chg_en |= mask;
-
-		SM5701_reg_write(charger->SM5701->i2c, SM5701_CNTL, chg_en);
-		pr_info("%s: SM5701 Charger toggled!! \n", __func__);
-		SM5701_reg_read(charger->SM5701->i2c, SM5701_CNTL, &chg_en);
-		pr_info("%s : CNTL register (0x09) : 0x%02x\n", __func__, chg_en);
 	}
 
 	gpio_direction_output((charger->pdata->chg_gpio_en), !enable);
@@ -486,9 +352,8 @@ static void SM5701_isr_work(struct work_struct *work)
 		}
 	}
 
-	if ((charger->pdata->ovp_uvlo_check_type ==
-		SEC_BATTERY_OVP_UVLO_CHGINT) &&
-		(charger->cable_type != POWER_SUPPLY_TYPE_OTG)) {
+	if (charger->pdata->ovp_uvlo_check_type ==
+		SEC_BATTERY_OVP_UVLO_CHGINT) {
 		val.intval = SM5701_get_charging_health(charger);
 
 		switch (val.intval) {
@@ -520,18 +385,7 @@ static void SM5701_isr_work(struct work_struct *work)
 		}
 	}
 
-	SM5701_otg_over_current_status(charger);
-#if defined(CONFIG_MACH_GRANDNEOVE3G)
-	if (system_rev > 1)
-		val.intval = sec_vf_adc_current_check();
-	else
-	    val.intval = SM5701_get_battery_present(charger);
-#elif defined(CONFIG_MACH_J13G)
-	val.intval = sec_vf_adc_current_check();
-#else
-        val.intval = SM5701_get_battery_present(charger);
-#endif
-
+	val.intval = SM5701_get_battery_present(charger);
 	pr_info("%s: battery status : %d\n", __func__, val.intval);
 	if (!val.intval)
 		psy_do_property("battery", set,
@@ -586,7 +440,6 @@ static void SM5701_charger_initialize(struct SM5701_charger_data *charger)
 			__func__, charger->dev_id);
 	charger->is_fullcharged = false;
 
-	/* AICL disable */
 	SM5701_reg_read(charger->SM5701->i2c, SM5701_VBUSCNTL, &reg_data);
 	reg_data &= ~SM5701_VBUSCNTL_AICLEN;
 	SM5701_reg_write(charger->SM5701->i2c, SM5701_VBUSCNTL, reg_data);
@@ -598,8 +451,8 @@ static void SM5701_charger_initialize(struct SM5701_charger_data *charger)
 	reg_data = 0x63;
 	SM5701_reg_write(charger->SM5701->i2c, SM5701_INTMASK1, reg_data);
 
-/* Mask CHGON, FASTTMROFFM, enable OTGOCP */
-	reg_data = 0xEC;
+/* Mask CHGON, FASTTMROFFM */
+	reg_data = 0xFC;
 	SM5701_reg_write(charger->SM5701->i2c, SM5701_INTMASK2, reg_data);
 
 /* Set OVPSEL to 6.35V
@@ -611,11 +464,7 @@ static void SM5701_charger_initialize(struct SM5701_charger_data *charger)
 	/* Operating Frequency in PWM BUCK mode : 2.4KHz */
 	SM5701_reg_read(charger->SM5701->i2c, SM5701_CNTL, &reg_data);
 	reg_data &= ~0xC0;
-	#if (defined(CONFIG_MACH_VIVALTO5MVE3G))
-		reg_data |= (FREQ_12 | 0x4);
-	#else
-		reg_data |= (FREQ_24 | 0x4);
-	#endif
+	reg_data |= (FREQ_24 | 0x4);
 	SM5701_reg_write(charger->SM5701->i2c, SM5701_CNTL, reg_data);
 
 	/* Disable AUTOSTOP */
@@ -649,15 +498,7 @@ static int sec_chg_get_property(struct power_supply *psy,
 		val->intval = SM5701_get_charging_health(charger);
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
-#if defined(CONFIG_MACH_GRANDNEOVE3G)
-	if(system_rev > 1)
-        val->intval = sec_vf_adc_current_check();
-	else
-	    val->intval = SM5701_get_battery_present(charger);
-#else
-        val->intval = SM5701_get_battery_present(charger);
-#endif
-
+		val->intval = SM5701_get_battery_present(charger);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		val->intval = charger->charging_current_max;
@@ -683,14 +524,6 @@ static int sec_chg_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		break;
-#if defined(CONFIG_BATTERY_SWELLING)
-	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		val->intval = sm5701_get_float_voltage(charger);
-		break;
-#endif
-	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
-		val->intval = charger->is_charging;
-		break;
 	default:
 		return -EINVAL;
 	}
@@ -704,10 +537,9 @@ static int sec_chg_set_property(struct power_supply *psy,
 	struct SM5701_charger_data *charger =
 		container_of(psy, struct SM5701_charger_data, psy_chg);
 	union power_supply_propval value;
-	union power_supply_propval chg_mode;
-	int set_charging_current, set_charging_current_max;
-	const int usb_charging_current = charger->pdata->charging_current[
-		POWER_SUPPLY_TYPE_USB].fast_charging_current;
+//	int set_charging_current, set_charging_current_max;
+//	const int usb_charging_current = charger->pdata->charging_current[
+//		POWER_SUPPLY_TYPE_USB].fast_charging_current;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
@@ -719,23 +551,20 @@ static int sec_chg_set_property(struct power_supply *psy,
 				POWER_SUPPLY_PROP_HEALTH, value);
 		if (val->intval == POWER_SUPPLY_TYPE_BATTERY) {
 			/* Disable Charger */
+			charger->is_charging = false;
 			charger->nchgen = true;
 			charger->aicl_on = false;
+#if 0
 			set_charging_current = 0;
 			set_charging_current_max =
 				charger->pdata->charging_current[
 				POWER_SUPPLY_TYPE_USB].input_current_limit;
+#endif
 			pr_info("%s : Disable Charger, Battery Supply!\n", __func__);
-			SM5701_otg_control(charger, 0);
 			// nCHG_EN is logic low so set 1 to disable charger
 			charger->is_fullcharged = false;
-		} else if (val->intval == POWER_SUPPLY_TYPE_OTG){
-			charger->nchgen = true;
-			charger->aicl_on = false;
-			SM5701_otg_control(charger, 1);
-			pr_info("%s : Disable Charger, OTG connected!\n", __func__);
-			charger->is_fullcharged = false;
 		} else {
+			charger->is_charging = true;
 			charger->nchgen = false;
 			charger->charging_current_max =
 					charger->pdata->charging_current
@@ -746,22 +575,19 @@ static int sec_chg_set_property(struct power_supply *psy,
 			/* decrease the charging current according to siop level */
 
 		// If siop is used set charging current according to the following
+#if 0
 			set_charging_current =
 				charger->charging_current * charger->siop_level / 100;
 			if (set_charging_current > 0 &&
 					set_charging_current < usb_charging_current)
-#ifdef CONFIG_THUNDERCHARGE_CONTROL
-				set_charging_current_max = custom_usb_current;
-#else
 				set_charging_current = usb_charging_current;
 
 				set_charging_current_max =
 					charger->charging_current_max;
 #endif
 		}
-                pr_info("thundercharge: pulling ( USB Current ) %d mA\n", set_charging_current_max);   
 		pr_info("%s : STATUS OF CHARGER ON(0)/OFF(1): %d\n", __func__, charger->nchgen);
-		/* SM5701_toggle_charger(charger, charger->is_charging); */
+		SM5701_toggle_charger(charger, charger->is_charging);
 
 		/* if battery full, only disable charging  */
 		if ((charger->status == POWER_SUPPLY_STATUS_CHARGING) ||
@@ -779,67 +605,45 @@ static int sec_chg_set_property(struct power_supply *psy,
 			/* if battery is removed, put vbus current limit to minimum */
 			if ((value.intval == POWER_SUPPLY_HEALTH_UNSPEC_FAILURE) ||
 			    (value.intval == POWER_SUPPLY_HEALTH_OVERHEATLIMIT))
-				SM5701_set_vbuslimit_current(charger, 100, true);
+				SM5701_set_vbuslimit_current(charger, 100);
 			else {
+			#ifdef CONFIG_FORCE_FAST_CHARGE
 				/* Set input current limit */
+				if (force_fast_charge > 0) {
+				pr_info("%s : vbus current limit (%dmA)\n",
+					__func__, charger->pdata->charging_current
+					[charger->cable_type].fast_charging_current);
+
+				SM5701_set_vbuslimit_current(
+					charger, charger->pdata->charging_current
+					[charger->cable_type].fast_charging_current);
+				} else if (force_fast_charge == 0) {
 				pr_info("%s : vbus current limit (%dmA)\n",
 					__func__, charger->pdata->charging_current
 					[charger->cable_type].input_current_limit);
-#if defined(CONFIG_MACH_J13G) || defined(CONFIG_MACH_YOUNG2VE3G) || \
-	defined(CONFIG_MACH_GRANDPRIMEVE3G)
-				if (charger->siop_level == 50) {
-					SM5701_set_vbuslimit_current(charger,
-						SIOP_INPUT_LIMIT_CURRENT, true);
-					pr_info("%s : siop enable - current limit (%dmA)\n",
-					__func__, SIOP_INPUT_LIMIT_CURRENT);
 
-				} else {
-					SM5701_set_vbuslimit_current(
-						charger, charger->pdata->charging_current
-						[charger->cable_type].input_current_limit, true);
-				}
-#else
 				SM5701_set_vbuslimit_current(
 					charger, charger->pdata->charging_current
-					[charger->cable_type].input_current_limit, true);
-#endif
-			}
-
-			if (charger->pdata->full_check_type_2nd
-				== SEC_BATTERY_FULLCHARGED_CHGPSY) {
-				psy_do_property("battery", get,
-				POWER_SUPPLY_PROP_CHARGE_NOW,
-				chg_mode);
-
-				if ((chg_mode.intval == SEC_BATTERY_CHARGING_2ND) ||
-					(chg_mode.intval
-						== SEC_BATTERY_CHARGING_RECHARGING)) {
-					/* Set topoff current */
-					pr_info("%s : 2nd topoff current (%dmA)\n",
-						__func__, charger->pdata->charging_current[
-						charger->cable_type].full_check_current_2nd);
-					SM5701_toggle_charger(charger, 0);
-					charger->is_fullcharged = false;
-					SM5701_set_topoff(
-						charger, charger->pdata->charging_current[
-							charger->cable_type].full_check_current_2nd);
-					SM5701_toggle_charger(charger, 1);
-				} else {
-					pr_info("%s : topoff current (%dmA)\n",
-						__func__, charger->pdata->charging_current[
-						charger->cable_type].full_check_current_1st);
-					SM5701_set_topoff(
-					charger, charger->pdata->charging_current[
-						charger->cable_type].full_check_current_1st);
+					[charger->cable_type].input_current_limit);
 				}
-			} else {
-				pr_info("%s : topoff current (%dmA)\n",
-					__func__, charger->pdata->charging_current[
-					charger->cable_type].full_check_current_1st);
-				SM5701_set_topoff(
-					charger, charger->pdata->charging_current[
-						charger->cable_type].full_check_current_1st);
+			#else
+				pr_info("%s : vbus current limit (%dmA)\n",
+					__func__, charger->pdata->charging_current
+					[charger->cable_type].input_current_limit);
+
+				SM5701_set_vbuslimit_current(
+					charger, charger->pdata->charging_current
+					[charger->cable_type].input_current_limit);
+			#endif
 			}
+
+			/* Set topoff current */
+			pr_info("%s : topoff current (%dmA)\n",
+				__func__, charger->pdata->charging_current[
+				charger->cable_type].full_check_current_1st);
+			SM5701_set_topoff(
+				charger, charger->pdata->charging_current[
+					charger->cable_type].full_check_current_1st);
 
 			/* Set fast charge current */
 			pr_info("%s : fast charging current (%dmA), siop_level=%d\n",
@@ -847,7 +651,6 @@ static int sec_chg_set_property(struct power_supply *psy,
 			SM5701_set_fastchg_current(
 				charger, charger->charging_current);
 		}
-		/* SM5701_operation_mode_function_control(); */
 		break;
 	/* val->intval : input charging current */
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
@@ -856,58 +659,12 @@ static int sec_chg_set_property(struct power_supply *psy,
 	/*  val->intval : charging current */
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
 		charger->charging_current = val->intval;
-		SM5701_set_fastchg_current(charger,
-				val->intval);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		SM5701_set_fastchg_current(charger,
 				val->intval);
 		SM5701_set_vbuslimit_current(charger,
-				val->intval, true);
-		break;
-
-	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		charger->siop_level = val->intval;
-#if defined(CONFIG_MACH_J13G) || defined(CONFIG_MACH_YOUNG2VE3G) || \
-	defined(CONFIG_MACH_GRANDPRIMEVE3G)
-		if (charger->siop_level == 50) {
-			SM5701_set_vbuslimit_current(charger,
-				SIOP_INPUT_LIMIT_CURRENT, false);
-		} else {
-			SM5701_set_vbuslimit_current(
-				charger, charger->pdata->charging_current
-				[charger->cable_type].input_current_limit, false);
-		}
-#else
-		SM5701_set_vbuslimit_current(
-			charger, charger->pdata->charging_current
-			[charger->cable_type].input_current_limit, false);
-#endif
-		break;
-#if defined(CONFIG_BATTERY_SWELLING)
-	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		pr_info("%s: float voltage(%d)\n", __func__, val->intval);
-		SM5701_set_batreg_voltage(charger, val->intval);
-		break;
-#endif
-	case POWER_SUPPLY_PROP_CHARGE_OTG_CONTROL:
-		pr_info("%s: OTG %s\n", __func__, val->intval > 0 ? "on" : "off");
-		if (val->intval) {
-			charger->nchgen = true;
-			charger->aicl_on = false;
-			SM5701_otg_control(charger, 1);
-			pr_info("%s : Disable Charger, OTG connected!\n", __func__);
-			charger->is_fullcharged = false;
-		} else {
-			SM5701_otg_control(charger, 0);
-			charger->is_charging = !val->intval;
-			SM5701_toggle_charger(charger, charger->is_charging);
-			pr_info("%s : OTG disconnected!\n", __func__);
-		}
-		break;
-	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
-		charger->is_charging = val->intval;
-		SM5701_toggle_charger(charger, val->intval);
+				val->intval);
 		break;
 	default:
 		return -EINVAL;
@@ -932,8 +689,6 @@ static int SM5701_charger_probe(struct platform_device *pdev)
 	int ret = 0;
 
 	pr_info("%s: SM5701 Charger Probe Start\n", __func__);
-
-	otg_enable_flag = 0;
 
 	charger = kzalloc(sizeof(*charger), GFP_KERNEL);
 	if (!charger)
@@ -1092,4 +847,5 @@ MODULE_DESCRIPTION("SILICONMITUS SM5701 Charger Driver");
 MODULE_AUTHOR("Samsung Electronics");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:SM5701_charger");
+
 
