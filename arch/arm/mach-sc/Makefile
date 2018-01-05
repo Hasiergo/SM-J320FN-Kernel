@@ -49,3 +49,4 @@ obj-$(CONFIG_MACH_SP9820FPGA) += board-sp9820fpga.o
 obj-$(CONFIG_MACH_SCX35_DT) += mach-scx35-dt.o
 obj-$(CONFIG_GPS_BCM47520) += sec_gps_bcm47520.o
 obj-$(CONFIG_GPS_LSI_S5N6420) += sec_gps_s5n6420.o
+
