@@ -44,6 +44,7 @@ config CPU_FREQ_STAT_DETAILS
 	  system.
 
 	  If in doubt, say N.
+
 config CPU_FREQ_LIMIT
 	bool "CPU frequency limit API"
 	default n
@@ -153,7 +154,6 @@ config CPU_FREQ_GOV_PERFORMANCE
 	  If in doubt, say Y.
 
 
-
 config CPU_FREQ_GOV_ONDEMAND
 	tristate "'ondemand' cpufreq policy governor"
 	select CPU_FREQ_TABLE
@@ -231,6 +231,23 @@ config CPU_FREQ_GOV_SPRDEMAND
 	  If you don't have one of these architectures or devices, use
 	  'ondemand' instead.
 
+config CPU_FREQ_GOV_INTELLIACTIVE
+	tristate "'intelliactive' cpufreq policy governor"
+	help
+	  'intelliactive' - This driver adds a dynamic cpufreq policy governor
+	  designed for latency-sensitive workloads.
+
+	  This governor attempts to reduce the latency of clock
+	  increases so that the system is more responsive to
+	  interactive workloads.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_interactive.
+
+	  For details, take a look at linux/Documentation/cpu-freq.
+
+	  If in doubt, say N.
+
 config CPU_BOOST
  	tristate "Event base short term CPU freq boost"
  	depends on CPU_FREQ
@@ -254,34 +271,6 @@ config SPRD_CPUFREQ_DT_DRIVER
         help
 	 USE CPUFREQ DT DRIVER INSTEAD of cpufreq-scx35.c on bL SOC
 
-config CPU_FREQ_GOV_INTELLIACTIVE
-	tristate "'intelliactive' cpufreq policy governor"
-	help
-	  'intelliactive' - This driver adds a dynamic cpufreq policy governor
-	  designed for latency-sensitive workloads.
-
-	  This governor attempts to reduce the latency of clock
-	  increases so that the system is more responsive to
-	  interactive workloads.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called cpufreq_interactive.
-
-	  For details, take a look at linux/Documentation/cpu-freq.
-
-	  If in doubt, say N.
-	  
-config CPU_BOOST
-	tristate "Event base short term CPU freq boost"
-	depends on CPU_FREQ
-        help
- 	  This driver boosts the frequency of one or more CPUs based on
- 	  various events that might occur in the system. As of now, the
- 	  events it reacts to are:
- 	  - Migration of important threads from one CPU to another.
- 
- 	  If in doubt, say N.
- 
 config GENERIC_CPUFREQ_CPU0
 	tristate "Generic CPU0 cpufreq driver"
 	depends on HAVE_CLK && REGULATOR && PM_OPP && OF
