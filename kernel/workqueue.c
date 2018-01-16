@@ -2012,9 +2012,15 @@ restart:
  * LOCKING:
  * spin_lock_irq(pool->lock) which may be released and regrabbed
  * multiple times.  Called only from manager.
+ *
+ * RETURNS:
+ * %false if no action was taken and pool->lock stayed locked, %true
+ * otherwise.
  */
-static void maybe_destroy_workers(struct worker_pool *pool)
+static bool maybe_destroy_workers(struct worker_pool *pool)
 {
+	bool ret = false;
+
 	while (too_many_workers(pool)) {
 		struct worker *worker;
 		unsigned long expires;
@@ -2028,7 +2034,10 @@ static void maybe_destroy_workers(struct worker_pool *pool)
 		}
 
 		destroy_worker(worker);
+		ret = true;
 	}
+
+	return ret;
 }
 
 /**
