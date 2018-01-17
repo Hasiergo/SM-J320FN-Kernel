@@ -46,8 +46,8 @@
 #define MIN_FREQUENCY_DOWN_DIFFERENTIAL		(1)
 
 #define DEF_FREQ_STEP				(25)
-#define DEF_STEP_UP_EARLY_HISPEED		(1958400)
-#define DEF_STEP_UP_INTERIM_HISPEED		(2265600)
+#define DEF_STEP_UP_EARLY_HISPEED		(1350000)
+#define DEF_STEP_UP_INTERIM_HISPEED		(1500000)
 #define DEF_SAMPLING_EARLY_HISPEED_FACTOR	(2)
 #define DEF_SAMPLING_INTERIM_HISPEED_FACTOR	(3)
 
@@ -78,8 +78,8 @@ static freq_table_idx pre_freq_idx[SUP_CORE_NUM] = {};
 
 #if defined(SMART_UP_SLOW_UP_AT_HIGH_FREQ)
 
-#define SUP_SLOW_UP_FREQUENCY			(1728000)
-#define SUP_HIGH_SLOW_UP_FREQUENCY		(2265600)
+#define SUP_SLOW_UP_FREQUENCY			(1350000)
+#define SUP_HIGH_SLOW_UP_FREQUENCY		(1500000)
 #define SUP_SLOW_UP_LOAD			(75)
 
 typedef struct {
@@ -191,8 +191,8 @@ static struct dbs_tuners {
 	.up_threshold = DEF_FREQUENCY_UP_THRESHOLD,
 	.sampling_down_factor = DEF_SAMPLING_DOWN_FACTOR,
 	.up_threshold_any_cpu_load = DEF_FREQUENCY_UP_THRESHOLD,
-	.sync_freq = 1574400,
-	.optimal_freq = 1574400,
+	.sync_freq = 914400,
+	.optimal_freq = 914400,
 	/* 20130711 smart_up */
 	.smart_up = SMART_UP_PLUS,
 	.smart_slow_up_load = SUP_SLOW_UP_LOAD,
@@ -250,7 +250,7 @@ show_one(step_up_interim_hispeed, step_up_interim_hispeed);
 show_one(sampling_early_factor, sampling_early_factor);
 show_one(sampling_interim_factor, sampling_interim_factor);
 
-static int two_phase_freq_array[NR_CPUS] = {[0 ... NR_CPUS-1] = 1958400} ;
+static int two_phase_freq_array[NR_CPUS] = {[0 ... NR_CPUS-1] = 1097400} ;
 
 static ssize_t show_two_phase_freq
 (struct kobject *kobj, struct attribute *attr, char *buf)
@@ -627,7 +627,7 @@ static ssize_t store_step_up_early_hispeed(struct kobject *a,
 	int ret;
 	ret = sscanf(buf, "%u", &input);
 
-	if (ret != 1 || input > 2265600 ||
+	if (ret != 1 || input > 1500000 ||
 			input < 0) {
 		return -EINVAL;
 	}

@@ -237,13 +237,13 @@
 			detect_gpio = <144>;
 			SD_Pwr_Name = "vddsdcore";
 			/* _1_8V_signal_Name = "vddsdio"; */
-			signal_default_Voltage = <3000000>;
+			/* signal_default_Voltage = <3000000>; */
 			ocr_avail = <0x00040000>;
 			clocks = <&clk_sdio0>, <&clk_384m>;
 			base_clk = <384000000>;
 			caps = <0xC0000407>;
 			caps2 = <0x200>;
-			pm_caps = <0x4>;
+			//pm_caps = <0x4>;
 			writeDelay = <0x3>;
 			readPosDelay = <0x3>;
 			readNegDelay = <0x3>;

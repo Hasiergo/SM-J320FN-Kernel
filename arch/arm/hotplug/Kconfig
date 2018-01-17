@@ -10,15 +10,6 @@ config THUNDERPLUG_CONTROL
  	help
  	  This driver uses powersuspend to take down the cpu cores on a octa core device.
 
-config MSM_RUN_QUEUE_STATS
-	bool "Enable collection and exporting of MSM Run Queue stats to userspace"
-	default n
-	help
-	This option enables the driver to periodically collecting the statistics
-	of kernel run queue information and calculate the load of the system.
-	This information is exported to usespace via sysfs entries and userspace
-	algorithms uses info and decide when to turn on/off the cpu cores.
-
 config USES_MALI_MP2_GPU
 	bool "Enable hotplugging feature for Mali GPUs"
 	default n

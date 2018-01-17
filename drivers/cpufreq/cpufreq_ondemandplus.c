@@ -97,10 +97,10 @@ static unsigned long up_threshold;
 #define DEFAULT_DOWN_DIFFERENTIAL 62
 static unsigned long down_differential;
 
-#define DEFAULT_INTER_HIFREQ 1728000
+#define DEFAULT_INTER_HIFREQ 1390200
 static u64 inter_hifreq;
 
-#define DEFAULT_INTER_LOFREQ 1036800
+#define DEFAULT_INTER_LOFREQ 768000
 static u64 inter_lofreq;
 
 #define DEFAULT_INTER_STAYCYCLES 2
@@ -112,7 +112,7 @@ static u64 staycycles_resetfreq;
 #define DEFAULT_IO_IS_BUSY 0
 static unsigned int io_is_busy;
 
-static u64 screen_on_min_freq = 300000;
+static u64 screen_on_min_freq = 350000;
 
 /*
  * Tunables end

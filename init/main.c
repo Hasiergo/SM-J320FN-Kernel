@@ -842,12 +842,12 @@ static int __ref kernel_init(void *unused)
 	kernel_init_freeable();
 
 #ifdef CONFIG_SEC_GPIO_DVS
-		/************************ Caution !!! ****************************/
-		/* This function must be located in an appropriate position for INIT state
-		 * in accordance with the specification of each BB vendor.
-		 */
-		/************************ Caution !!! ****************************/
-		gpio_dvs_check_initgpio();
+    /************************ Caution !!! ****************************/
+    /* This function must be located in an appropriate position for INIT state
+     * in accordance with the specification of each BB vendor.
+     */
+    /************************ Caution !!! ****************************/
+    gpio_dvs_check_initgpio();
 #endif
 
 	/* need to finish all async __init code before freeing the memory */
