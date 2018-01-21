@@ -214,7 +214,7 @@
 			reg = <0 0x20600000 0 0x1000>;
 			interrupts = <0 60 0x0>;
 			sprd,name = "sdio_emmc";
-			/*detect_gpio = <-1>; */
+			/* detect_gpio = <-1>; */
 			//SD_Pwr_Name = "vddemmccore";
 			//_1_8V_signal_Name = "vddgen0";
 			signal_default_Voltage = <1800000>;
@@ -257,7 +257,7 @@
 			sprd,name = "sdio_wifi";
 			/* detect_gpio = <-1>; */
 			/* SD_Pwr_Name = "vddsdcore"; */
-			/* _1_8V_signal_Name = "vddsdio";*/
+			/* _1_8V_signal_Name = "vddsdio"; */
 			/* signal_default_Voltage = <3000000>; */
 			ocr_avail = <0x00360080>;
 			clocks = <&clk_sdio1>, <&clk_76m8>;
