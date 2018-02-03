@@ -824,11 +824,11 @@ static bool too_many_pipe_buffers_hard(struct user_struct *user)
 
 struct pipe_inode_info *alloc_pipe_info(void)
 {
-	struct pipe_inode_info *pipe;
-
-	pipe = kzalloc(sizeof(struct pipe_inode_info), GFP_KERNEL);
-	if (pipe) {
-		unsigned long pipe_bufs = PIPE_DEF_BUFFERS;
+        struct pipe_inode_info *pipe;
+ 
+ 	pipe = kzalloc(sizeof(struct pipe_inode_info), GFP_KERNEL);
+ 	if (pipe) {	
+                unsigned long pipe_bufs = PIPE_DEF_BUFFERS;
 		struct user_struct *user = get_current_user();
 
 		if (!too_many_pipe_buffers_hard(user)) {
@@ -846,7 +846,7 @@ struct pipe_inode_info *alloc_pipe_info(void)
 			mutex_init(&pipe->mutex);
 			return pipe;
 		}
-		free_uid(user);
+                free_uid(user);
 		kfree(pipe);
 	}
 
@@ -857,7 +857,7 @@ void free_pipe_info(struct pipe_inode_info *pipe)
 {
 	int i;
 
-	account_pipe_buffers(pipe, pipe->buffers, 0);
+        account_pipe_buffers(pipe, pipe->buffers, 0);
 	free_uid(pipe->user);
 	for (i = 0; i < pipe->buffers; i++) {
 		struct pipe_buffer *buf = pipe->bufs + i;
@@ -1249,7 +1249,7 @@ static long pipe_set_size(struct pipe_inode_info *pipe, unsigned long nr_pages)
 			memcpy(bufs + head, pipe->bufs, tail * sizeof(struct pipe_buffer));
 	}
 
-	account_pipe_buffers(pipe, pipe->buffers, nr_pages);
+        account_pipe_buffers(pipe, pipe->buffers, nr_pages);
 	pipe->curbuf = 0;
 	kfree(pipe->bufs);
 	pipe->bufs = bufs;
@@ -1321,7 +1321,7 @@ long pipe_fcntl(struct file *file, unsigned int cmd, unsigned long arg)
 		if (!capable(CAP_SYS_RESOURCE) && size > pipe_max_size) {
 			ret = -EPERM;
 			goto out;
-		} else if ((too_many_pipe_buffers_hard(pipe->user) ||
+                } else if ((too_many_pipe_buffers_hard(pipe->user) ||
 			    too_many_pipe_buffers_soft(pipe->user)) &&
 		           !capable(CAP_SYS_RESOURCE) && !capable(CAP_SYS_ADMIN)) {
 			ret = -EPERM;

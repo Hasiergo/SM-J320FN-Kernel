@@ -3,79 +3,45 @@
 #  Copyright (C) 2015, Samsung Electronics, Co., Ltd.
 #  Written by System S/W Group, S/W Platform R&D Team,
 #  Mobile Communication Division.
-#
-#  Edited by Nguyen Tuan Quyen (koquantam)
 ##
 
 set -e -o pipefail
 
-PLATFORM=sc8830
-DEFCONFIG=grandprimeve3g-dt_defconfig
-NAME=CORE_kernel
-VERSION=v2.2
-
-export CROSS_COMPILE=/home/a1/toolchain/sabermod-6.0/bin/arm-eabi-
+# export CROSS_COMPILE=~/android-work/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin/arm-eabi-
+export CROSS_COMPILE=/home/hasier/gcc-linaro-6.4/bin/arm-eabi-
 export ARCH=arm
-export LOCALVERSION=-`echo ${VERSION}`
+
+PLATFORM=sc8830
+DEFCONFIG=j3x_defconfig
 
 KERNEL_PATH=$(pwd)
-KERNEL_ZIP=${KERNEL_PATH}/kernel_zip
-KERNEL_ZIP_NAME=${NAME}_${VERSION}
+MODULE_PATH=~/out/target/product/j3xnlte/lib/modules
 EXTERNAL_MODULE_PATH=${KERNEL_PATH}/external_module
 
 JOBS=`grep processor /proc/cpuinfo | wc -l`
 
-# Colors
-cyan='\033[0;36m'
-yellow='\033[0;33m'
-red='\033[0;31m'
-nocol='\033[0m'
+function build_kernel() {
+	make ${DEFCONFIG}
+	make headers_install
+	make -j4
+	make modules
+	make -C ${EXTERNAL_MODULE_PATH}/wifi KDIR=${KERNEL_PATH}
+	
+	[ -d ${MODULE_PATH} ] && rm -rf ${MODULE_PATH}
+	mkdir -p ${MODULE_PATH}
 
-function make_zip() {
-	cd ${KERNEL_PATH}/kernel_zip
-	zip -r ${KERNEL_ZIP_NAME}.zip ./
-	mv ${KERNEL_ZIP_NAME}.zip ${KERNEL_PATH}
+	find ${KERNEL_PATH}/drivers -name "*.ko" -exec cp -f {} ${MODULE_PATH} \;
+	find -L ${EXTERNAL_MODULE_PATH} -name "*.ko" -exec cp -f {} ${MODULE_PATH} \;
 }
 
-function build_kernel() {
-	echo -e "$cyan***********************************************"
-	echo "          Compiling CORE(TM) kernel          	     "
-	echo -e "***********************************************$nocol"
-
-	echo -e "$red Initializing defconfig...$nocol"
-	make ${DEFCONFIG}
-	echo -e "$red Building kernel...$nocol"
-	make -j${JOBS}
-	make modules
-	make dtbs
-	echo -e "$red Building external modules...$nocol"
-	#make -C ${EXTERNAL_MODULE_PATH}/mali MALI_PLATFORM=${PLATFORM} BUILD=release KDIR=${KERNEL_PATH}
-
-	if [ ! -e ${KERNEL_ZIP}/system/lib/modules ]; then
-		mkdir -p ${KERNEL_ZIP}/system/lib/modules
-	fi;
-
-	find ${KERNEL_PATH}/drivers -name "*.ko" -exec mv -f {} ${KERNEL_ZIP}/system/lib/modules \;
-	#find ${EXTERNAL_MODULE_PATH} -name "*.ko" -exec mv -f {} ${KERNEL_ZIP}/system/lib/modules \;
-	find ${KERNEL_PATH} -name "zImage" -exec mv -f {} ${KERNEL_ZIP}/tools \;
-
-	echo -e "$red Making flashable zip...$nocol";
-	make_zip;
+function clean() {
+	[ -d ${MODULE_PATH} ] && rm -rf ${MODULE_PATH}
+	make distclean
 }
 
 function main() {
-if [ "${1}" = "clean" ]; then
-	echo -e "$red Cleaning build environment...$nocol"
-	make mrproper;
-	rm ${KERNEL_ZIP_NAME}.zip
-else
-	BUILD_START=$(date +"%s")
-	build_kernel
-
-	BUILD_END=$(date +"%s")
-	DIFF=$(($BUILD_END - $BUILD_START))
-	echo -e "$yellow Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds.$nocol"
-fi;
+	[ "${1}" = "Clean" ] && clean || build_kernel
 }
 
 main $@
+
