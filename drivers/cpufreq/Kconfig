@@ -222,6 +222,19 @@ config CPU_FREQ_GOV_USERSPACE
 
 	  If in doubt, say Y.
 
+config CPU_FREQ_GOV_ZENERACTIVE
+	tristate "'zeneractive' cpufreq governor"
+	depends on CPU_FREQ
+	help
+	'zeneractive' - an interactive-based governor
+	This governor provides full CPU hotplugging support
+	based on CPU load per CPU.
+
+	It also provides CPU hotplugging of CPU 1-X on
+	suspend/wake.
+	For details, take a look at linux/Documentation/cpu-freq.
+	If in doubt, say N
+
 config CPU_FREQ_GOV_DARKNESS
 	tristate "'darkness' cpufreq policy governor"
 
