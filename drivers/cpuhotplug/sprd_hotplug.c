@@ -71,9 +71,9 @@ u64 g_prev_cpu_idle[4] = {0};
 #define DEF_CPU_LOAD_DOWN_THRESHOLD		(50)
 #define DEF_CPU_DOWN_COUNT			(3)
 
-#define LOAD_CRITICAL 100
-#define LOAD_HI 90
-#define LOAD_MID 80
+#define LOAD_CRITICAL 95
+#define LOAD_HI 85
+#define LOAD_MID 75
 #define LOAD_LIGHT 50
 #define LOAD_LO 0
 
@@ -83,8 +83,8 @@ u64 g_prev_cpu_idle[4] = {0};
 #define LOAD_LIGHT_SCORE -10
 #define LOAD_LO_SCORE -20
 
-#define DEF_CPU_UP_MID_THRESHOLD		(80)
-#define DEF_CPU_UP_HIGH_THRESHOLD		(90)
+#define DEF_CPU_UP_MID_THRESHOLD		(75)
+#define DEF_CPU_UP_HIGH_THRESHOLD		(85)
 #define DEF_CPU_DOWN_MID_THRESHOLD		(30)
 #define DEF_CPU_DOWN_HIGH_THRESHOLD		(40)
 
@@ -293,7 +293,7 @@ static void sprd_unplug_cpus(struct work_struct *work)
 	return;
 }
 
-static void sprd_plugin_cpus(struct work_struct *work)
+static void __cpuinit sprd_plugin_cpus(struct work_struct *work)
 {
 	int cpu, max_num;
 	int be_online_num = 0;
