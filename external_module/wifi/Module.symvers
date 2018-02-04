@@ -1,2 +1,0 @@
-0x3dfcc326	wlan_module_init	/home/hasier/newkernel/external_module/wifi/sprdwl	EXPORT_SYMBOL_GPL
-0x98149df2	wlan_module_exit	/home/hasier/newkernel/external_module/wifi/sprdwl	EXPORT_SYMBOL_GPL
