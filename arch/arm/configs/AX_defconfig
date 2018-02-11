@@ -1859,9 +1859,6 @@ CONFIG_THERMAL_SC2713S=y
 # CONFIG_WATCHDOG is not set
 CONFIG_SSB_POSSIBLE=y
 
-# Fastchg
-CONFIG_FORCE_FAST_CHARGE=y
-
 #
 # Sonics Silicon Backplane
 #

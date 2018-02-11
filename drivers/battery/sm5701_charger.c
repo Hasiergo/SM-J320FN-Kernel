@@ -46,10 +46,6 @@ extern int curr_val;
 extern int soc_val;
 extern int lpcharge;
 
-ifdef CONFIG_FORCE_FAST_CHARGE
-#include <linux/fast_charging.h>
-#endif
-
 #if defined(CONFIG_MACH_GRANDNEOVE3G) || defined(CONFIG_MACH_J13G)
 extern unsigned int system_rev ;
 extern int sec_vf_adc_current_check(void);
@@ -864,26 +860,7 @@ static int sec_chg_set_property(struct power_supply *psy,
 			    (value.intval == POWER_SUPPLY_HEALTH_OVERHEATLIMIT))
 				SM5701_set_vbuslimit_current(charger, 100, true);
 			else {
-                        #ifdef CONFIG_FORCE_FAST_CHARGE
 				/* Set input current limit */
-				if (force_fast_charge > 0) {
-				pr_info("%s : vbus current limit (%dmA)\n",
-					__func__, charger->pdata->charging_current
-					[charger->cable_type].fast_charging_current);
-
-				SM5701_set_vbuslimit_current(
-					charger, charger->pdata->charging_current
-					[charger->cable_type].fast_charging_current);
-				} else if (force_fast_charge == 0) {
-				pr_info("%s : vbus current limit (%dmA)\n",
-					__func__, charger->pdata->charging_current
-					[charger->cable_type].input_current_limit);
-
-				SM5701_set_vbuslimit_current(
-					charger, charger->pdata->charging_current
-					[charger->cable_type].input_current_limit);
-				}
-			#else
 				pr_info("%s : vbus current limit (%dmA)\n",
 					__func__, charger->pdata->charging_current
 					[charger->cable_type].input_current_limit);
