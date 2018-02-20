@@ -75,7 +75,13 @@
 #include <linux/blkdev.h>
 #include <linux/elevator.h>
 #include <linux/random.h>
-#include <linux/bootperf.h>
+#include <linux/list.h>
+#include <linux/integrity.h>
+#include <linux/proc_ns.h>
+#include <linux/io.h>
+#include <linux/cache.h>
+#include <linux/rodata_test.h>
+#include <linux/jump_label.h>
 
 #include <asm/io.h>
 #include <asm/bugs.h>
@@ -852,6 +858,8 @@ static int __ref kernel_init(void *unused)
 
 	/* need to finish all async __init code before freeing the memory */
 	async_synchronize_full();
+	ftrace_free_init_mem();
+	jump_label_invalidate_init();
 	free_initmem();
 	mark_rodata_ro();
 	system_state = SYSTEM_RUNNING;
