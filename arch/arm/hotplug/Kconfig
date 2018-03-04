@@ -1,0 +1,19 @@
+config INTELLI_PLUG
+        bool "Enable intelli-plug cpu hotplug driver"
+        default n
+        help
+          Generic Intelli-plug cpu hotplug driver for ARM SOCs
+
+config THUNDERPLUG_CONTROL
+ 	bool "Enable plugging down/up of cores using powersuspend"
+	default n
+ 	help
+ 	  This driver uses powersuspend to take down the cpu cores on a octa core device.
+
+config USES_MALI_MP2_GPU
+	bool "Enable hotplugging feature for Mali GPUs"
+	default n
+	help
+	  This option enables hotplugging features inside thunderplug 
+	  for Mali 400MP2 GPUs.
+
