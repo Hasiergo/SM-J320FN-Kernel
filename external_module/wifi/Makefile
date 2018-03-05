@@ -29,7 +29,7 @@ KDIR-$(shell uname -m):=/lib/modules/$(shell uname -r)/build
 
 ifeq ($(ARCH), arm)
 	# when compiling for ARM we're cross compiling
-	export CROSS_COMPILE ?= arm-none-linux-gnueabi-
+	export CROSS_COMPILE ?= /home/hasier/gcc-linaro-7.2/bin/arm-eabi-
 	CONFIG ?= arm
 else
 	# Compiling for the host
