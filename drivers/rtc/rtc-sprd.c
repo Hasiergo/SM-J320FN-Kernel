@@ -584,7 +584,7 @@ static irqreturn_t rtc_interrupt_handler(int irq, void *dev_id)
 
 	pr_info("RTC ***** interrupt happen\n");
 	//rtc_update_irq(rdev, 1, RTC_AF | RTC_IRQF);
-	wake_lock_timeout(&rtc_interrupt_wake_lock,2*HZ);
+	wake_lock_timeout(&rtc_interrupt_wake_lock,1*HZ);
 	rtc_aie_update_irq(rdev);
 	clear_rtc_int(RTC_INT_ALM_MSK);
 	return IRQ_HANDLED;

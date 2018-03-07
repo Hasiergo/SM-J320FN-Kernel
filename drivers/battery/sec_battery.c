@@ -2721,8 +2721,8 @@ continue_monitor:
 skip_monitor:
 	sec_bat_set_polling(battery);
 
-	if (battery->capacity <= 0 || battery->health_change)
-		wake_lock_timeout(&battery->monitor_wake_lock, HZ * 5);
+	if (battery->capacity <= 0)
+		wake_lock_timeout(&battery->monitor_wake_lock, HZ * 3);
 	else
 		wake_unlock(&battery->monitor_wake_lock);
 
@@ -2912,7 +2912,8 @@ static void sec_bat_cable_work(struct work_struct *work)
 	battery->polling_count = 1;	/* initial value = 1 */
 
 	wake_lock(&battery->monitor_wake_lock);
-	queue_delayed_work(battery->monitor_wqueue, &battery->monitor_work, 0);
+	queue_delayed_work(battery->monitor_wqueue, &battery->monitor_work,
+					msecs_to_jiffies(300));
 end_of_cable_work:
 	wake_unlock(&battery->cable_wake_lock);
 	dev_dbg(battery->dev, "%s: End\n", __func__);
@@ -6002,7 +6003,7 @@ static void sec_battery_complete(struct device *dev)
 
 	wake_lock(&battery->monitor_wake_lock);
 	queue_delayed_work(battery->monitor_wqueue,
-		&battery->monitor_work, msecs_to_jiffies(500));
+		&battery->monitor_work, msecs_to_jiffies(300));
 
 	dev_dbg(battery->dev, "%s: End\n", __func__);
 
