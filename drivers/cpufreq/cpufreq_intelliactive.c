@@ -67,7 +67,7 @@ static spinlock_t speedchange_cpumask_lock;
 static struct mutex gov_lock;
 
 /* Hi speed to bump to from lo speed when load burst (default max) */
-static unsigned int hispeed_freq = 1190400;
+static unsigned int hispeed_freq;
 
 /* Go to hi speed when CPU load at or above this value. */
 #define DEFAULT_GO_HISPEED_LOAD 99
@@ -77,7 +77,7 @@ static unsigned long go_hispeed_load = DEFAULT_GO_HISPEED_LOAD;
 static unsigned int sampling_down_factor;
 
 /* Target load.  Lower values result in higher CPU speeds. */
-#define DEFAULT_TARGET_LOAD 97
+#define DEFAULT_TARGET_LOAD 90
 static unsigned int default_target_loads[] = {DEFAULT_TARGET_LOAD};
 static spinlock_t target_loads_lock;
 static unsigned int *target_loads = default_target_loads;
@@ -131,17 +131,11 @@ static bool io_is_busy = 0;
  * up_threshold_any_cpu_freq then do not let the frequency to drop below
  * sync_freq
  */
-<<<<<<< HEAD
-static unsigned int up_threshold_any_cpu_load = 97;
-static unsigned int sync_freq = 729600;
-static unsigned int up_threshold_any_cpu_freq = 960000;
-=======
 static unsigned int up_threshold_any_cpu_load = 90;
 static unsigned int sync_freq = 700000;
 static unsigned int up_threshold_any_cpu_freq = 900000;
->>>>>>> 3727ccb0e11e... cpufreq: intelliactive: Fixup clock values
 
-static int two_phase_freq_array[NR_CPUS] = {[0 ... NR_CPUS-1] = 1036800} ;
+static int two_phase_freq_array[NR_CPUS] = {[0 ... NR_CPUS-1] = 1300000} ;
 
 static int cpufreq_governor_intelliactive(struct cpufreq_policy *policy,
 		unsigned int event);
@@ -152,7 +146,7 @@ static
 struct cpufreq_governor cpufreq_gov_intelliactive = {
 	.name = "intelliactive",
 	.governor = cpufreq_governor_intelliactive,
-	.max_transition_latency = 5000000,
+	.max_transition_latency = 10000000,
 	.owner = THIS_MODULE,
 };
 
@@ -399,7 +393,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 
 	do_div(cputime_speedadj, delta_time);
 	loadadjfreq = (unsigned int)cputime_speedadj * 100;
-	cpu_load = loadadjfreq / pcpu->policy->cur;
+	cpu_load = loadadjfreq / pcpu->target_freq;
 	pcpu->prev_load = cpu_load;
 	boosted = boost_val || now < boostpulse_endtime;
 
