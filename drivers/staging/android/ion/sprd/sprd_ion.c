@@ -95,10 +95,6 @@ static int get_iommu_id(int master_id, int *iommu_id)
 
 struct ion_client *sprd_ion_client_create(const char *name)
 {
-	if (IS_ERR(idev)) {
-		pr_err("par idev is illegal\n");
-		return NULL;
-	}
 	return ion_client_create(idev, name);
 }
 EXPORT_SYMBOL(sprd_ion_client_create);
@@ -233,54 +229,47 @@ int sprd_ion_free_addr(int master_id, struct ion_addr_data *data)
 EXPORT_SYMBOL(sprd_ion_free_addr);
 
 int sprd_ion_get_gsp_addr(struct ion_addr_data *data)
-
 {
 	int ret = 0;
 	struct dma_buf *dmabuf;
 	struct ion_buffer *buffer;
-	int iommu_id;
 
-	if (data->fd_buffer < 0 && data->dmabuf == NULL) {
-		pr_err("%s, input fd: %d, dmabuf: %p error\n",
-			__func__, data->fd_buffer, data->dmabuf);
+	dmabuf = dma_buf_get(data->fd_buffer);
+	if (IS_ERR(dmabuf)) {
+		pr_err("sprd_ion_get_gsp_addr() dmabuf=0x%lx dma_buf_get error!\n",
+			(unsigned long)dmabuf);
 		return -1;
 	}
-	
-	get_iommu_id(master_id, &iommu_id);
-
-	if (data->fd_buffer >= 0) {
-		dmabuf = dma_buf_get(data->fd_buffer);
-		if (IS_ERR_OR_NULL(dmabuf)) {
-			pr_err("%s, dmabuf=0x%lx dma_buf_get error!\n",
-				__func__, (unsigned long)dmabuf);
-			return -1;
-		}
-	} else {
-		dmabuf = data->dmabuf;
-	}
-
-	buffer = dmabuf->priv;
-	if (data->fd_buffer >= 0)
+	/* if this memory came from ion */
+#if 0
+	if (dmabuf->ops != &dma_buf_ops) {
+		pr_err("%s: can not import dmabuf from another exporter\n",
+		       __func__);
 		dma_buf_put(dmabuf);
+		return ERR_PTR(-EINVAL);
+	}
+#endif
+	buffer = dmabuf->priv;
+	dma_buf_put(dmabuf);
 
-	if (ION_HEAP_TYPE_SYSTEM == buffer->heap->type || data->is_need_iova) {
+	if (ION_HEAP_TYPE_SYSTEM == buffer->heap->type) {
 #if defined(CONFIG_SPRD_IOMMU)
 		mutex_lock(&buffer->lock);
-		if(0 == buffer->iomap_cnt[iommu_id]) {
-			buffer->iova[iommu_id] = sprd_iova_alloc(iommu_id, buffer->size);
-			ret = sprd_iova_map(iommu_id, buffer->iova[iommu_id],
+		if(0 == buffer->iomap_cnt[IOMMU_GSP]) {
+			buffer->iova[IOMMU_GSP] = sprd_iova_alloc(IOMMU_GSP, buffer->size);
+			ret = sprd_iova_map(IOMMU_GSP, buffer->iova[IOMMU_GSP],
 							buffer->size, buffer->sg_table);
 		}
 		if (ret) {
 			pr_err("%s, sprd_iova_map error, iova: 0x%lx, ret: %d!\n",
-				__func__, buffer->iova[iommu_id], ret);
-			sprd_iova_free(iommu_id, buffer->iova[iommu_id], buffer->size);
-			buffer->iova[iommu_id] = 0;
+				__func__, buffer->iova[IOMMU_GSP], ret);
+			sprd_iova_free(IOMMU_GSP, buffer->iova[IOMMU_GSP], buffer->size);
+			buffer->iova[IOMMU_GSP] = 0;
 			data->iova_addr = 0;
 			data->size = 0;
 		} else {
-			buffer->iomap_cnt[iommu_id]++;
-			data->iova_addr = buffer->iova[iommu_id];
+			buffer->iomap_cnt[IOMMU_GSP]++;
+			data->iova_addr = buffer->iova[IOMMU_GSP];
 			data->size = buffer->size;
 		}
 		data->iova_enabled = true;
@@ -304,46 +293,43 @@ int sprd_ion_get_gsp_addr(struct ion_addr_data *data)
 
 	return ret;
 }
-EXPORT_SYMBOL(sprd_ion_get_addr);
+EXPORT_SYMBOL(sprd_ion_get_gsp_addr);
 
-int sprd_ion_free_addr(int master_id, struct ion_addr_data *data)
+int sprd_ion_free_gsp_addr(int fd)
 {
 	int ret = 0;
 	struct dma_buf *dmabuf;
 	struct ion_buffer *buffer;
-	int iommu_id;
 
-	if (data->fd_buffer < 0 && data->dmabuf == NULL) {
-		pr_err("%s, input fd: %d, dmabuf: %p error\n",
-			__func__, data->fd_buffer, data->dmabuf);
+	dmabuf = dma_buf_get(fd);
+	if (IS_ERR(dmabuf)) {
+		pr_err("sprd_ion_free_gsp_addr() dmabuf=0x%lx dma_buf_get error!\n",
+			(unsigned long)dmabuf);
 		return -1;
 	}
-	
-	get_iommu_id(master_id, &iommu_id);
-
-	if (data->fd_buffer >= 0) {
-		dmabuf = dma_buf_get(data->fd_buffer);
-		if (IS_ERR_OR_NULL(dmabuf)) {
-			pr_err("%s, dmabuf=0x%lx dma_buf_get error!\n",
-				__func__, (unsigned long)dmabuf);
-			return -1;
-		}
-	} else {
-		dmabuf = data->dmabuf;
+	/* if this memory came from ion */
+#if 0
+	if (dmabuf->ops != &dma_buf_ops) {
+		pr_err("%s: can not import dmabuf from another exporter\n",
+		       __func__);
+		dma_buf_put(dmabuf);
+		return ERR_PTR(-EINVAL);
 	}
-
+#endif
 	buffer = dmabuf->priv;
-	if (ION_HEAP_TYPE_SYSTEM == buffer->heap->type || data->is_need_iova) {
+	dma_buf_put(dmabuf);
+
+	if (ION_HEAP_TYPE_SYSTEM == buffer->heap->type) {
 #if defined(CONFIG_SPRD_IOMMU)
 		mutex_lock(&buffer->lock);
-		if (buffer->iomap_cnt[iommu_id] > 0) {
-			buffer->iomap_cnt[iommu_id]--;
-			if(0 == buffer->iomap_cnt[iommu_id]) {
-				ret = sprd_iova_unmap(iommu_id, buffer->iova[iommu_id],
+		if (buffer->iomap_cnt[IOMMU_GSP] > 0) {
+			buffer->iomap_cnt[IOMMU_GSP]--;
+			if(0 == buffer->iomap_cnt[IOMMU_GSP]) {
+				ret = sprd_iova_unmap(IOMMU_GSP, buffer->iova[IOMMU_GSP],
 									buffer->size);
-				sprd_iova_free(iommu_id, buffer->iova[iommu_id],
+				sprd_iova_free(IOMMU_GSP, buffer->iova[IOMMU_GSP],
 							buffer->size);
-				buffer->iova[iommu_id] = 0;
+				buffer->iova[IOMMU_GSP] = 0;
 			}
 		}
 		mutex_unlock(&buffer->lock);
@@ -352,15 +338,13 @@ int sprd_ion_free_addr(int master_id, struct ion_addr_data *data)
 #endif
 	}
 
-	if (data->fd_buffer >= 0)
-		dma_buf_put(dmabuf);
-
-	if (ret)
-		pr_err("%s, error %d!\n", __func__, ret);
+	if (ret) {
+		pr_err("sprd_ion_free_gsp_addr, error %d!\n",ret);
+	}
 
 	return ret;
 }
-EXPORT_SYMBOL(sprd_ion_free_addr);
+EXPORT_SYMBOL(sprd_ion_free_gsp_addr);
 
 long sprd_ion_ioctl(struct file *filp, unsigned int cmd,
 				unsigned long arg)
@@ -486,7 +470,6 @@ long sprd_ion_ioctl(struct file *filp, unsigned int cmd,
 			buffer->iova[iommu_id] = 0;
 			data.iova_addr = 0;
 			data.iova_size = 0;
-			ion_debug_heap_show_iova(heaps[0], iommu_id);
 		} else {
 			buffer->iomap_cnt[iommu_id]++;
 			data.iova_addr = buffer->iova[iommu_id];
@@ -607,7 +590,6 @@ long sprd_ion_ioctl(struct file *filp, unsigned int cmd,
 	case ION_SPRD_CUSTOM_FENCE_DUP:
 	{
 		break;
-
 	}
 	case ION_SPRD_CUSTOM_MAP_KERNEL:
 	{
@@ -824,7 +806,6 @@ static long sprd_heap_ioctl(struct ion_client *client, unsigned int cmd,
 			buffer->iova[iommu_id] = 0;
 			data.iova_addr = 0;
 			data.iova_size = 0;
-			ion_debug_heap_show_iova(heaps[0], iommu_id);
 		} else {
 			buffer->iomap_cnt[iommu_id]++;
 			data.iova_addr = buffer->iova[iommu_id];
@@ -945,7 +926,6 @@ static long sprd_heap_ioctl(struct ion_client *client, unsigned int cmd,
 	case ION_SPRD_CUSTOM_FENCE_DUP:
 	{
 		break;
-		
 	}
 	case ION_SPRD_CUSTOM_MAP_KERNEL:
 	{
@@ -1029,7 +1009,7 @@ static long sprd_heap_ioctl(struct ion_client *client, unsigned int cmd,
 				       DMA_FROM_DEVICE);
 		dma_buf_put(dmabuf);
 		break;
- 	}
+	}
 	default:
 		pr_err("sprd_ion Do not support cmd: %d\n", cmd);
 		return -ENOTTY;
@@ -1096,9 +1076,7 @@ static struct ion_platform_data *sprd_ion_parse_dt(struct platform_device *pdev)
 	struct platform_device *new_dev = NULL;
 	uint32_t val = 0, type = 0;
 	const char *name;
-	uint32_t out_values[4];
-	struct device_node *heap_mem_node = NULL;
-	uint32_t heap_reserved_method = 0;
+	uint32_t out_values[2];
 
 	for_each_child_of_node(parent, child)
 		num_heaps++;
@@ -1152,50 +1130,14 @@ static struct ion_platform_data *sprd_ion_parse_dt(struct platform_device *pdev)
 		}
 		pdata->heaps[i].type = type;
 
-		ret = of_property_read_u32(child, "sprd,ion-heap-reserved", &val);
-		if (ret) {
-			heap_reserved_method = 0;
-		} else {
-			heap_reserved_method = val;
-		}
-
-#ifdef CONFIG_64BIT
-		if (0 == heap_reserved_method) {
-			ret = of_property_read_u32_array(child, "sprd,ion-heap-mem",
-				out_values, 4);
-		} else {
-			heap_mem_node = of_parse_phandle(child, "sprd,ion-heap-mem", 0);
-			ret = of_property_read_u32_array(child, "reg", out_values, 4);
-		}
-
-		if (!ret) {
-			pr_debug("val 0 1 2 3 is 0x%x,0x%x,0x%x,0x%x\n",
-					out_values[0],out_values[1],
-					out_values[2],out_values[3]);
-			pdata->heaps[i].base = out_values[0];
-			pdata->heaps[i].base = pdata->heaps[i].base << 32;
-			pdata->heaps[i].base |= out_values[1];
-
-			pdata->heaps[i].size = out_values[2];
-			pdata->heaps[i].size = pdata->heaps[i].size << 32;
-			pdata->heaps[i].size |= out_values[3];
-		}
-#else
-		if (0 == heap_reserved_method) {
-			ret = of_property_read_u32_array(child, "sprd,ion-heap-mem",
+		ret = of_property_read_u32_array(child, "sprd,ion-heap-mem",
 				out_values, 2);
-		} else {
-			heap_mem_node = of_parse_phandle(child, "sprd,ion-heap-mem", 0);
-			ret = of_property_read_u32_array(heap_mem_node, "reg",
-				out_values, 2);
-		}
 		if (!ret) {
 			pdata->heaps[i].base = out_values[0];
 			pdata->heaps[i].size = out_values[1];
 		}
 
-#endif
-		pr_info("%s: heaps[%d]: %s type: %d base: %lx size %zx\n",
+		pr_info("%s: heaps[%d]: %s type: %d base: %lu size %zd\n",
 				__func__, i, pdata->heaps[i].name, pdata->heaps[i].type,
 				pdata->heaps[i].base, pdata->heaps[i].size);
 		++i;
@@ -1318,45 +1260,17 @@ static struct platform_driver ion_driver = {
 	}
 };
 
-#ifdef CONFIG_E_SHOW_MEM
-static int ion_e_show_mem_handler(struct notifier_block *nb,
-				unsigned long val, void *data)
-{
-	int i;
-	enum e_show_mem_type type = (enum e_show_mem_type)val;
-
-	printk("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
-	printk("Enhanced Mem-info :ION\n");
-	for (i = 0; i < num_heaps; i++) {
-		if ((E_SHOW_MEM_BASIC != type)
-			|| (ION_HEAP_TYPE_SYSTEM == heaps[i]->type))
-		ion_debug_heap_show_printk(heaps[i], type);
-	}
-	return 0;
-}
-
-static struct notifier_block ion_e_show_mem_notifier = {
-	.notifier_call = ion_e_show_mem_handler,
-};
-#endif
-
 static int __init ion_init(void)
 {
 	int result;
 	result= platform_driver_register(&ion_driver);
 	pr_info("%s,result:%d\n",__FUNCTION__,result);
-#ifdef CONFIG_E_SHOW_MEM
-	register_e_show_mem_notifier(&ion_e_show_mem_notifier);
-#endif
 	return result;
 }
 
 static void __exit ion_exit(void)
 {
 	platform_driver_unregister(&ion_driver);
-#ifdef CONFIG_E_SHOW_MEM
-	unregister_e_show_mem_notifier(&ion_e_show_mem_notifier);
-#endif
 }
 
 module_init(ion_init);
