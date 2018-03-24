@@ -242,8 +242,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 
 HOSTCC       = ccache gcc
 HOSTCXX      = g++
-HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer -std=gnu89
-HOSTCXXFLAGS = -O2
+HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -Ofast -fomit-frame-pointer -std=gnu89 $(GRAPHITE)
+HOSTCXXFLAGS = -Ofast $(GRAPHITE)
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -374,14 +374,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks \
-                   -Wno-memset-transposed-args -Wno-bool-compare \
-                   -Wno-logical-not-parentheses -Wno-discarded-array-qualifiers \
-                   -Wno-unused-variable -Wno-return-local-addr \
-                   -Wno-unused-function \
-                   -Wno-array-bounds -Wno-incompatible-pointer-types \
-                   -Wno-misleading-indentation -Wno-tautological-compare \
-                   -Wno-error=misleading-indentation -Wno-parentheses \
-		   -fdiagnostics-show-option \
+                   -fdiagnostics-show-option \
 		   -std=gnu89 \
 		   -munaligned-access
 
@@ -584,7 +577,7 @@ all: vmlinux
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
 else
-KBUILD_CFLAGS	+= -O2
+KBUILD_CFLAGS	+= -Ofast
 endif
 
 # Disable unused-constant-variable warnings
