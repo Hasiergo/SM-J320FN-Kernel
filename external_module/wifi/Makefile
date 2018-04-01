@@ -29,7 +29,7 @@ KDIR-$(shell uname -m):=/lib/modules/$(shell uname -r)/build
 
 ifeq ($(ARCH), arm)
 	# when compiling for ARM we're cross compiling
-	export CROSS_COMPILE ?=/home/hasier/arm-cortex_a7-linux-gnueabihf-linaro_4.9.4/bin/arm-cortex_a7-linux-gnueabihf-
+	export CROSS_COMPILE ?=/home/hasier/gcc-linaro-7.3/bin/arm-linux-gnueabi-
 	CONFIG ?= arm
 else
 	# Compiling for the host
