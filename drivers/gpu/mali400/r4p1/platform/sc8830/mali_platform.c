@@ -624,9 +624,9 @@ void mali_platform_utilization(struct mali_gpu_utilization_data *data)
 		}
 	}
 
-	// Instantly switch to maximum clock speed - koquantam
+	// Instantly switch to maximum clock speed 
 	gpu_dfs_ctx.freq_next = gpu_dfs_ctx.freq_max;
-	MALI_DEBUG_PRINT(3,("GPU_DFS util %3d; next_freq %6d\n", gpu_dfs_ctx.cur_load, gpu_dfs_ctx.freq_next->freq))
+	MALI_DEBUG_PRINT(3,("GPU_DFS util %3d; next_freq %6d\n", gpu_dfs_ctx.cur_load, gpu_dfs_ctx.freq_next->freq));
 
 	if(gpu_dfs_ctx.freq_next->freq != gpu_dfs_ctx.freq_cur->freq)
 	{
