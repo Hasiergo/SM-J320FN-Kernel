@@ -26,21 +26,10 @@ MALI_ENABLE_CPU_CYCLES ?= 0
 # The in-tree driver will only use the GPL releases.
 ccflags-y += -I$(src)/linux/license/gpl
 
-ifeq ($(USING_GPU_UTILIZATION), 1)
-    ifeq ($(USING_DVFS), 1)
+ifeq ($(USING_GPU_UTILIZATION),1)
+    ifeq ($(USING_DVFS),y)
         $(error USING_GPU_UTILIZATION conflict with USING_DVFS you can read the Integration Guide to choose which one do you need)
     endif
-endif
-
-ifeq ($(CONFIG_MALI400_UMP),y)
-	export EXTRA_DEFINES += -DCONFIG_MALI400_UMP=1
-	ifeq ($(USE_UMPV2),1)
-		UMP_SYMVERS_FILE ?= ../umpv2/Module.symvers
-	else
-		UMP_SYMVERS_FILE ?= ../ump/Module.symvers
-	endif
-	KBUILD_EXTRA_SYMBOLS = $(realpath $(UMP_SYMVERS_FILE))
-	$(warning $(KBUILD_EXTRA_SYMBOLS))
 endif
 
 ifeq ($(CONFIG_MALI400_PROFILING),y)
@@ -96,11 +85,20 @@ mali-y += \
 	linux/mali_osk_mali.o \
 	linux/mali_osk_notification.o \
 	linux/mali_osk_time.o \
-	linux/mali_osk_timers.o
+	linux/mali_osk_timers.o \
+        linux/mali_osk_bitmap.o
 
 mali-y += linux/mali_memory.o linux/mali_memory_os_alloc.o
 mali-y += linux/mali_memory_external.o
 mali-y += linux/mali_memory_block_alloc.o
+mali-y += linux/mali_memory_swap_alloc.o
+
+mali-y += \
+	linux/mali_memory_manager.o \
+	linux/mali_memory_virtual.o \
+	linux/mali_memory_util.o \
+	linux/mali_memory_cow.o \
+	linux/mali_memory_defer_bind.o
 
 mali-y += \
 	linux/mali_ukk_mem.o \
@@ -114,7 +112,6 @@ mali-y += \
 mali-y += \
 	common/mali_kernel_core.o \
 	linux/mali_kernel_linux.o \
-	common/mali_kernel_descriptor_mapping.o \
 	common/mali_session.o \
 	linux/mali_device_pause_resume.o \
 	common/mali_kernel_vsync.o \
