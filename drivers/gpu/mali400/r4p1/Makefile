@@ -12,8 +12,8 @@
 
 # set up defaults if not defined by the user
 TIMESTAMP ?= default
-OS_MEMORY_KERNEL_BUFFER_SIZE_IN_MB = 16
-USING_GPU_UTILIZATION = 1
+OS_MEMORY_KERNEL_BUFFER_SIZE_IN_MB ?= 16
+USING_GPU_UTILIZATION ?= 1
 PROFILING_SKIP_PP_JOBS ?= 0
 PROFILING_SKIP_PP_AND_GP_JOBS ?= 0
 MALI_PP_SCHEDULER_FORCE_NO_JOB_OVERLAP ?= 0
@@ -195,8 +195,8 @@ export EXTRA_DEFINES += -DMALI_FAKE_PLATFORM_DEVICE=1
 export MALI_PLATFORM_FILES = $(wildcard platform/$(MALI_PLATFORM)/*.c)
 
 ifneq ($(MALI_PLATFORM),)
-mali-y += platform/$(MALI_PLATFORM)/mali_platform.o
-ccflags-y += -I$(src)/platform/$(MALI_PLATFORM)
+mali-y += platform/sc8830/mali_platform.o
+ccflags-y += -I$(src)/platform/sc8830
 endif
 
 # Get subversion revision number, fall back to only ${MALI_RELEASE_NAME} if no svn info is available
