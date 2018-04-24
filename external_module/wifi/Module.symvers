@@ -1,0 +1,2 @@
+0x2d326a2a	wlan_module_init	/home/hasier/SM-J320FN-Kernel/external_module/wifi/sprdwl	EXPORT_SYMBOL_GPL
+0x17ebf368	wlan_module_exit	/home/hasier/SM-J320FN-Kernel/external_module/wifi/sprdwl	EXPORT_SYMBOL_GPL
